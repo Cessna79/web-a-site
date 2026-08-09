@@ -559,15 +559,38 @@ document.addEventListener("click", e=>{
   go("final");
   return;
 }
-  if(a==="finishShift"){
-    S.shift.startKm=document.getElementById("skm").value.trim();
-    S.shift.finishKm=document.getElementById("fkm").value.trim();
-    const t=Date.now();
-    S.shift.stops[S.shift.stops.length-1].timeOut=t;
-    S.shift.finishTime=t; S.shift.done=true;
-    upsertPast(S.shift);
-    persist(); go("sheet"); return;
+if(a==="finishShift"){
+  const startKm=document.getElementById("skm").value.trim();
+  const finishKm=document.getElementById("fkm").value.trim();
+
+  if(!startKm || !finishKm){
+    toast("Enter both start and finish mileage");
+    return;
   }
+
+  if(!/^\d+(\.\d+)?$/.test(startKm) || !/^\d+(\.\d+)?$/.test(finishKm)){
+    toast("Mileage must contain numbers only");
+    return;
+  }
+
+  if(Number(finishKm) < Number(startKm)){
+    toast("Finish mileage cannot be lower than start mileage");
+    return;
+  }
+
+  S.shift.startKm=startKm;
+  S.shift.finishKm=finishKm;
+
+  const t=Date.now();
+  S.shift.stops[S.shift.stops.length-1].timeOut=t;
+  S.shift.finishTime=t;
+  S.shift.done=true;
+
+  upsertPast(S.shift);
+  persist();
+  go("sheet");
+  return;
+}
   if(a==="fileShift"){ S.shift=null; persist(); go("home"); return; }
   if(a==="pdfRun"){ makeRunSheet(S.shift); return; }
   if(a==="pdfWeek"){ makeWeekly(); return; }
