@@ -133,36 +133,70 @@ const store = (() => {
 /* ---------- time helpers (times stored as epoch ms) ---------- */
 const pad = n => String(n).padStart(2,"0");
 
+/* Round official shift start/end times to nearest 15 minutes */
 function round15(ms){
   if(ms==null) return null;
   return Math.round(ms / 900000) * 900000;
 }
 
+/* Display the exact stored clock time.
+   Do NOT round here because customer arrival/departure
+   times must remain actual clock times. */
 const fmtT = ms => ms==null ? "" : (d=>{
-  const r = new Date(round15(ms));
-  return `${pad(r.getHours())}:${pad(r.getMinutes())}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 })(new Date(ms));
 
 const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-function todayStr(d=new Date()){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+function todayStr(d=new Date()){
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+/* Calculate hours using the already-rounded official
+   shift startTime and finishTime. */
 function diffH(s,f){
   if(s==null||f==null) return 0;
 
-  const start = round15(s);
-  const finish = round15(f);
-
-  let ms = finish - start;
+  let ms = f-s;
   if(ms<0) ms += 864e5;
 
   return ms/36e5;
 }
-const hDec = h => h ? (Math.round(h*100)/100).toFixed(2) : "";
-const hHM = h => { if(!h) return "00:00"; const t=Math.round(h*60); return `${pad(Math.floor(t/60))}:${pad(t%60)}`; };
-function mondayOf(d){ const x=new Date(d); const w=(x.getDay()+6)%7; x.setDate(x.getDate()-w); x.setHours(0,0,0,0); return x; }
-function parseDate(s){ const p=String(s).split("-").map(Number); return new Date(p[0],(p[1]||1)-1,p[2]||1); }
-const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+const hDec = h =>
+  h ? (Math.round(h*100)/100).toFixed(2) : "";
 
+const hHM = h => {
+  if(!h) return "00:00";
+  const t=Math.round(h*60);
+  return `${pad(Math.floor(t/60))}:${pad(t%60)}`;
+};
+
+function mondayOf(d){
+  const x=new Date(d);
+  const w=(x.getDay()+6)%7;
+  x.setDate(x.getDate()-w);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+function parseDate(s){
+  const p=String(s).split("-").map(Number);
+  return new Date(p[0],(p[1]||1)-1,p[2]||1);
+}
+
+const esc = s =>
+  (s==null ? "" : String(s)).replace(
+    /[&<>"]/g,
+    c => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;"
+    }[c])
+  );
+
+/* ---------- state ---------- */
 
 /* ---------- state ---------- */
 let S;
@@ -562,7 +596,7 @@ if(!startKm){ toast("Enter starting mileage"); return; }
 
 const company=document.getElementById("startCo").value.trim();
 const city=document.getElementById("startCity").value.trim();
-const t=Date.now();
+const t=round15(Date.now());
 
 S.shift={ id:t, date:todayStr(), truck, startCompany:company, startCity:city, startTime:t, finishTime:null,
       phase:"atStop", next:blankNext(), endCompany:company,
@@ -637,8 +671,10 @@ if(a==="finishShift"){
 
   S.shift.finishKm=finishKm;
 
-  const t=Date.now();
-  S.shift.stops[S.shift.stops.length-1].timeOut=t;
+  const actualFinish=Date.now();
+  const t=round15(actualFinish);
+
+  S.shift.stops[S.shift.stops.length-1].timeOut=actualFinish;
   S.shift.finishTime=t;
   S.shift.done=true;
 
