@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#14181C" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>UBT Run Sheet</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+  :root{
+    --bg:#14181C; --panel:#1C232B; --panel2:#252E38; --line:#33404C;
+    --hi:#EAF0F4; --mid:#93A2AE; --dim:#5E6E7A;
+    --amber:#F5A623; --go:#3DBE6B; --stop:#E5484D; --blue:#3B9BE0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--hi);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:480px;margin:0 auto;min-height:100%}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+    padding:12px 16px;display:flex;align-items:center;gap:12px}
+  .brand{font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+  .title{font-size:17px;font-weight:600}
+  main{padding:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .lbl{font-size:12px;color:var(--mid);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+  input,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    color:var(--hi);padding:13px 12px;font-size:16px;outline:none;font-family:inherit}
+  textarea{min-height:72px;resize:vertical}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  .field{margin-bottom:14px}
+  .btn{width:100%;border:none;border-radius:12px;padding:16px;font-size:17px;font-weight:700;
+    cursor:pointer;color:#0e0e10}
+  .btn:disabled{opacity:.45}
+  .btn.go{background:var(--go)} .btn.amber{background:var(--amber)}
+  .btn.blue{background:var(--blue)} .btn.dark{background:var(--panel2);color:var(--hi)}
+  .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .row .k{color:var(--mid)} .row .v{font-weight:600}
+  .seg{flex:1;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--hi);
+    padding:14px 8px;font-size:14px;cursor:pointer;text-align:center}
+  .seg.on{color:#0e0e10;font-weight:700}
+  .segs{display:flex;gap:8px}
+  .stamp{flex:1;border:1px solid var(--line);border-radius:10px;background:var(--panel2);
+    padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center}
+  .stamp small{font-size:12px;color:var(--mid);text-transform:uppercase;letter-spacing:1px}
+  .stamp b{font-size:20px;font-family:ui-monospace,Menlo,monospace}
+  .stoprow{width:100%;display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;
+    color:var(--hi);text-align:left}
+  .stoprow .sub{font-size:12px;color:var(--mid);margin-top:3px}
+  .stat{flex:1}
+  .stat .n{font-size:22px;font-weight:700;margin-top:4px}
+  .pill{border:1px solid var(--line);background:var(--panel2);color:var(--hi);border-radius:20px;
+    padding:7px 14px;font-size:13px;cursor:pointer}
+  .icon{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--hi);font-size:22px;line-height:1;cursor:pointer}
+  .muted{color:var(--mid);font-size:14px;line-height:1.6}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;z-index:8;display:flex;max-width:480px;margin:0 auto;
+    background:var(--panel);border-top:1px solid var(--line);
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px))}
+  .tab{flex:1;background:none;border:none;color:var(--mid);cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;gap:3px;padding:6px 0;font-size:11px;letter-spacing:.3px;border-radius:10px}
+  .tab.active{color:var(--amber)}
+  body.has-tabs main{padding-bottom:88px}
+  .badge{font-size:10px;letter-spacing:1px;color:#0e0e10;border-radius:4px;padding:1px 5px;margin-right:6px;font-weight:700}
+  .btn.stopb{background:var(--stop);color:#0e0e10}
+  .note{color:var(--dim);font-size:12px;line-height:1.6;margin-top:18px}
+  .mt{margin-top:12px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);
+    border:1px solid var(--line);color:var(--hi);padding:12px 18px;border-radius:24px;font-size:14px;
+    z-index:20;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div id="navL"></div>
+    <div style="flex:1">
+      <div class="brand">United Brothers Transport</div>
+      <div class="title" id="scr">Loading…</div>
+    </div>
+    <div id="navR"></div>
+  </header>
+  <main id="app"></main>
+</div>
+<nav id="tabbar" class="tabbar" style="display:none">
+  <button class="tab" data-act="tab" data-tab="shift">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h13v13H1z"/><path d="M14 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
+    <span>Shift</span>
+  </button>
+  <button class="tab" data-act="tab" data-tab="week">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+    <span>Week</span>
+  </button>
+  <button class="tab" data-act="tab" data-tab="sheets">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg>
+    <span>Sheets</span>
+  </button>
+</nav>
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+const PDFLib = window.PDFLib;
+
+/* ---------- storage (localStorage w/ in-memory fallback) ---------- */
+const store = (() => {
+  let mem = {}, ok = true;
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ ok = false; }
+  return {
+    get(k){ try { return ok ? localStorage.getItem(k) : mem[k]; } catch(e){ return mem[k]; } },
+    set(k,v){ try { ok ? localStorage.setItem(k,v) : (mem[k]=v); } catch(e){ mem[k]=v; } }
+  };
+})();
+
+/* ---------- time helpers (times stored as epoch ms) ---------- */
+const pad = n => String(n).padStart(2,"0");
+const fmtT = ms => ms==null ? "" : (d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`)(new Date(ms));
+const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function todayStr(d=new Date()){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function diffH(s,f){ if(s==null||f==null) return 0; let ms=f-s; if(ms<0) ms+=864e5; return ms/36e5; }
+const hDec = h => h ? (Math.round(h*100)/100).toFixed(2) : "";
+const hHM = h => { if(!h) return "00:00"; const t=Math.round(h*60); return `${pad(Math.floor(t/60))}:${pad(t%60)}`; };
+function mondayOf(d){ const x=new Date(d); const w=(x.getDay()+6)%7; x.setDate(x.getDate()-w); x.setHours(0,0,0,0); return x; }
+function parseDate(s){ const p=String(s).split("-").map(Number); return new Date(p[0],(p[1]||1)-1,p[2]||1); }
+const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- seed a couple of prior weekdays so the timesheet has data ---------- */
+function seedWeek(){
+  const mon = mondayOf(new Date()), out=[];
+  const doneDays = (new Date().getDay()+6)%7;
+  for(let o=0;o<doneDays && o<2;o++){
+    const d=new Date(mon); d.setDate(mon.getDate()+o);
+    const s=new Date(d); s.setHours(6,30,0,0);
+    const f=new Date(d); f.setHours(16+o,15,0,0);
+    out.push({id:s.getTime(),date:todayStr(d),truck:"T-118",startCompany:"UBT Yard",
+      startTime:s.getTime(),finishTime:f.getTime(),stops:[],startKm:"402110",finishKm:"402540",done:true});
+  }
+  return out;
+}
+
+/* ---------- state ---------- */
+let S;
+function loadState(){
+  try{ const raw=store.get("ubt"); if(raw){ const o=JSON.parse(raw);
+    const shift=o.shift||null;
+    if(shift && shift.phase==null) shift.phase="atStop";
+    if(shift && !shift.done && !shift.next) shift.next=blankNext();
+    const view = !o.profile ? "setup" : (shift && !shift.done ? "shift" : "home");
+    return {profile:o.profile||null, past:o.past||[], shift, view, editMode:"edit", editIdx:null, draft:null}; }
+  }catch(e){}
+  return {profile:null, past:seedWeek(), shift:null, view:"setup", editMode:"edit", editIdx:null, draft:null};
+}
+function persist(){ store.set("ubt", JSON.stringify({profile:S.profile, past:S.past, shift:S.shift})); }
+function upsertPast(sh){ const c=JSON.parse(JSON.stringify(sh)); const i=S.past.findIndex(x=>x.id===sh.id); if(i>=0) S.past[i]=c; else S.past.push(c); }
+S = loadState();
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
+
+/* ---------- navigation ---------- */
+function go(view){ S.view=view; persist(); render(); }
+const FUEL=["Empty","Qtr","Half","Full"];
+
+/* ---------- render ---------- */
+const app=document.getElementById("app");
+function render(){
+  const scr=document.getElementById("scr"), navL=document.getElementById("navL"), navR=document.getElementById("navR");
+  navL.innerHTML=""; navR.innerHTML="";
+  const editTitle = S.editMode==="next" ? "Next stop"
+    : (S.draft&&S.draft.pinned==="start" ? "Starting point"
+    : (S.draft&&S.draft.pinned==="end" ? "End yard" : "Edit stop"));
+  const titles={setup:"Set up profile",home:"Shift",shift:"On duty",editStop:editTitle,
+    final:"End of shift",sheet:"Daily run sheet",week:"Weekly timesheet",sheets:"Saved sheets"};
+  scr.textContent=titles[S.view]||"";
+  const topLevel=["home","shift","week","sheets"];
+  if(["editStop","final","sheet"].includes(S.view)){
+    const back={editStop:"shift",final:"shift",sheet:"shift"}[S.view];
+    navL.innerHTML=`<button class="icon" data-act="go" data-v="${back}" aria-label="Back">‹</button>`;
+  } else {
+    navL.innerHTML=`<div style="width:8px;height:8px;border-radius:8px;background:var(--amber)"></div>`;
+  }
+  app.innerHTML=({setup:vSetup,home:vHome,shift:vShift,editStop:vEditStop,final:vFinal,sheet:vSheet,week:vWeek,sheets:vSheets}[S.view]||(()=>""))();
+  // bottom tab bar
+  const tb=document.getElementById("tabbar");
+  const showTabs=topLevel.includes(S.view);
+  document.body.classList.toggle("has-tabs", showTabs);
+  tb.style.display=showTabs?"flex":"none";
+  if(showTabs){
+    tb.querySelector('[data-tab="shift"]').classList.toggle("active", S.view==="shift"||S.view==="home");
+    tb.querySelector('[data-tab="week"]').classList.toggle("active", S.view==="week");
+    tb.querySelector('[data-tab="sheets"]').classList.toggle("active", S.view==="sheets");
+  }
+}
+
+function vSetup(){
+  return `
+  <p class="muted" style="margin-top:0">Enter this once. Your name and corporation print on every sheet.
+  Your home base is the yard you usually start from — you can change it for any day at start.
+  The truck changes daily, so you enter that when you start a shift.</p>
+  <div class="field"><div class="lbl">Driver name</div><input id="pn" placeholder="e.g. M. Singh" value="${esc(S.profile?.name||"")}"></div>
+  <div class="field"><div class="lbl">Corporation</div><input id="pc" placeholder="e.g. 12345 Ontario Inc." value="${esc(S.profile?.corp||"")}"></div>
+  <div class="field"><div class="lbl">Home base (usual start yard)</div><input id="ph" placeholder="e.g. UBT Yard, Brampton" value="${esc(S.profile?.homeBase||"")}"></div>
+  <button class="btn go" data-act="saveProfile">Save profile</button>`;
+}
+function vHome(){
+  return `
+  <div class="card">
+    <div class="row"><span class="k">Driver</span><span class="v">${esc(S.profile.name)}</span></div>
+    <div class="row"><span class="k">Date</span><span class="v">${todayStr()}</span></div>
+    <div class="row"><span class="k">Status</span><span class="v" style="color:var(--mid)">Off duty</span></div>
+  </div>
+  <div class="card mt">
+    <div class="lbl">Starting from — company</div>
+    <input id="startCo" class="mt" style="margin-bottom:12px" placeholder="Start company / yard" value="${esc(S.profile.homeBase||"")}">
+    <div class="lbl">City</div>
+    <input id="startCity" class="mt" style="margin-bottom:12px" placeholder="City">
+    <div class="lbl">Today's truck</div>
+    <input id="truck" class="mono mt" style="margin-bottom:12px" placeholder="Truck #  e.g. T-118">
+    <button class="btn go" data-act="startShift">Start shift</button>
+  </div>
+  <button class="btn dark mt" data-act="go" data-v="setup">Edit profile</button>
+  <p class="note">Data is saved on this phone and works offline. Once we connect the office database,
+  finished shifts also sync automatically.</p>`;
+}
+function stopRowHtml(s,i){
+  const badge=s.pinned?`<span class="badge" style="background:${s.pinned==="start"?"var(--go)":"var(--stop)"}">${s.pinned==="start"?"START":"END"}</span>`:"";
+  return `<button class="stoprow" data-act="editStop" data-i="${i}">
+    <div style="flex:1">
+      <div style="font-weight:600">${badge}${esc(s.company)||"—"}${s.city?` · <span style="color:var(--mid);font-weight:400">${esc(s.city)}</span>`:""}</div>
+      <div class="sub mono">${s.bobtail?"BOBTAIL":(esc(s.trailer)||"no trailer")} · ${s.status==="load"?"LOADED":s.status==="empty"?"EMPTY":"—"}${s.status==="load"&&s.temp?` · ${esc(s.temp)}°`:""}</div>
+    </div>
+    <div style="text-align:right" class="mono">
+      <div style="color:var(--go)">${fmtT(s.timeIn)||"--:--"}</div>
+      <div style="color:var(--stop)">${fmtT(s.timeOut)||"--:--"}</div>
+    </div>
+  </button>`;
+}
+function stopFieldsHtml(d){
+  const fuel=FUEL.map(f=>`<div class="seg ${d.fuel===f?"on":""}" style="${d.fuel===f?"background:var(--go)":""}" data-act="fuel" data-f="${f}">${f}</div>`).join("");
+  return `
+  <div class="field mt"><div class="lbl">Trailer</div>
+    <div class="segs">
+      <input id="trailer" style="flex:1;${d.bobtail?"opacity:.5":""}" placeholder="Trailer #" value="${d.bobtail?"Bobtail":esc(d.trailer)}" ${d.bobtail?"disabled":""}>
+      <div class="seg ${d.bobtail?"on":""}" style="max-width:110px;${d.bobtail?"background:var(--amber)":""}" data-act="bobtail">Bobtail</div>
+    </div>
+  </div>
+  <div class="field"><div class="lbl">Load status</div>
+    <div class="segs">
+      <div class="seg ${d.status==="load"?"on":""}" style="${d.status==="load"?"background:var(--blue)":""}" data-act="status" data-s="load">Loaded</div>
+      <div class="seg ${d.status==="empty"?"on":""}" style="${d.status==="empty"?"background:var(--mid)":""}" data-act="status" data-s="empty">Empty</div>
+    </div>
+  </div>
+  ${d.status==="load"?`
+  <div class="field"><div class="lbl">Fuel level</div><div class="segs">${fuel}</div></div>
+  <div class="field"><div class="lbl">Temperature (°C)</div><input id="temp" inputmode="numeric" placeholder="e.g. -18" value="${esc(d.temp)}"></div>`:""}
+  <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>`;
+}
+function vShift(){
+  const sh=S.shift, el=hHM(diffH(sh.startTime,Date.now()));
+  const cur=sh.stops[sh.stops.length-1];
+  const list=sh.stops.map((s,i)=>stopRowHtml(s,i)).join("");
+  const head=`
+  <div class="card" style="display:flex;gap:16px">
+    <div class="stat"><div class="lbl">Truck</div><div class="n">${esc(sh.truck)}</div></div>
+    <div class="stat"><div class="lbl">Start</div><div class="n mono">${fmtT(sh.startTime)}</div></div>
+    <div class="stat"><div class="lbl">Elapsed</div><div class="n mono" style="color:var(--amber)" id="elapsed">${el}</div></div>
+  </div>`;
+  const listBlock=`<div class="lbl" style="margin:22px 2px 10px">Stops so far (${sh.stops.length})</div>${list}`;
+
+  if(sh.phase==="driving" && sh.next){
+    const n=sh.next, yard=n.pinned==="end";
+    const dest = yard
+      ? `<div class="card mt" style="border-color:var(--blue)"><div class="lbl">Driving to</div>
+          <div style="font-weight:600;font-size:17px;margin-top:6px"><span class="badge" style="background:var(--stop)">YARD</span> ${esc(n.company)||"the yard"}</div></div>`
+      : `<div class="card mt" style="border-color:var(--blue)"><div class="lbl">Driving to</div>
+          <div class="field mt" style="margin-bottom:8px"><input id="nextCompany" placeholder="Next stop company" value="${esc(n.company)}"></div>
+          <div class="field" style="margin-bottom:0"><input id="nextCity" placeholder="City" value="${esc(n.city)}"></div></div>`;
+    return `${head}
+      <div class="muted mt" style="margin-left:2px">On the road — press <b style="color:var(--hi)">Arrive</b> when you get there.${yard?"":" You can still fix the destination above."}</div>
+      ${dest}
+      <button class="btn go mt" data-act="arrive">Arrive</button>
+      ${listBlock}`;
+  }
+
+  // phase atStop
+  if(cur.pinned==="end"){
+    return `${head}
+      <div class="muted mt" style="margin-left:2px">Back at the yard — <b style="color:var(--hi)">${esc(cur.company)||"yard"}</b>. Wrap up, then end the shift.</div>
+      ${stopFieldsHtml(cur)}
+      <button class="btn amber mt" data-act="endShift">End shift</button>
+      ${listBlock}`;
+  }
+  return `${head}
+    <div class="muted mt" style="margin-left:2px">You're at <b style="color:var(--hi)">${esc(cur.company)||"—"}</b>${cur.city?" · "+esc(cur.city):""}. Fill this stop, set your next stop, then Depart.</div>
+    ${stopFieldsHtml(cur)}
+    <div class="lbl" style="margin:20px 2px 8px">Next stop</div>
+    <div class="field"><input id="nextCompany" placeholder="Next stop company" value="${esc(sh.next?sh.next.company:"")}"></div>
+    <div class="field"><input id="nextCity" placeholder="City" value="${esc(sh.next?sh.next.city:"")}"></div>
+    <button class="btn stopb mt" data-act="depart">Depart</button>
+    <button class="btn dark mt" data-act="returnToYard">Return to yard &amp; end</button>
+    ${listBlock}`;
+}
+function vEditStop(){
+  const d=S.draft;
+  const fuel=FUEL.map(f=>`<div class="seg ${d.fuel===f?"on":""}" style="${d.fuel===f?"background:var(--go)":""}" data-act="fuel" data-f="${f}">${f}</div>`).join("");
+  return `
+  <div class="field"><div class="lbl">Trailer</div>
+    <div class="segs">
+      <input id="trailer" style="flex:1;${d.bobtail?"opacity:.5":""}" placeholder="Trailer #" value="${d.bobtail?"Bobtail":esc(d.trailer)}" ${d.bobtail?"disabled":""}>
+      <div class="seg ${d.bobtail?"on":""}" style="max-width:110px;${d.bobtail?"background:var(--amber)":""}" data-act="bobtail">Bobtail</div>
+    </div>
+  </div>
+  <div class="field"><div class="lbl">Load status</div>
+    <div class="segs">
+      <div class="seg ${d.status==="load"?"on":""}" style="${d.status==="load"?"background:var(--blue)":""}" data-act="status" data-s="load">Loaded</div>
+      <div class="seg ${d.status==="empty"?"on":""}" style="${d.status==="empty"?"background:var(--mid)":""}" data-act="status" data-s="empty">Empty</div>
+    </div>
+  </div>
+  ${d.status==="load"?`
+  <div class="field"><div class="lbl">Fuel level</div><div class="segs">${fuel}</div></div>
+  <div class="field"><div class="lbl">Temperature (°C)</div><input id="temp" inputmode="numeric" placeholder="e.g. -18" value="${esc(d.temp)}"></div>`:""}
+  <div class="field"><div class="lbl">Company</div><input id="company" placeholder="Pickup / delivery name" value="${esc(d.company)}"></div>
+  <div class="field"><div class="lbl">City</div><input id="city" placeholder="City" value="${esc(d.city)}"></div>
+  ${S.editMode==="edit"?`<div class="field"><div class="lbl">Times (military)</div>
+    <div class="segs">
+      <div class="stamp" style="${d.timeIn?"border-color:var(--go)":""}" data-act="stamp" data-w="in">
+        <small>Arrive</small><b style="color:${d.timeIn?"var(--go)":"var(--dim)"}">${fmtT(d.timeIn)||"--:--"}</b></div>
+      <div class="stamp" style="${d.timeOut?"border-color:var(--stop)":""}" data-act="stamp" data-w="out">
+        <small>Depart</small><b style="color:${d.timeOut?"var(--stop)":"var(--dim)"}">${fmtT(d.timeOut)||"--:--"}</b></div>
+    </div>
+  </div>`:`<div class="muted" style="margin:0 2px 14px">Arrive and depart times are stamped automatically when you press Arrive and Depart.</div>`}
+  <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>
+  <button class="btn go" data-act="saveStop">${S.editMode==="next"?"Save next stop":"Save"}</button>`;
+}
+function vFinal(){
+  const end=S.shift.stops[S.shift.stops.length-1];
+  return `
+  <p class="muted" style="margin-top:0">Enter odometer readings to finish. Ending at
+  <b style="color:var(--hi)">${esc(end.company)||"the yard"}</b> — the app stamps the yard depart as your
+  finish time and works out total hours and daily kilometres.</p>
+  <div class="field"><div class="lbl">Start mileage (km)</div><input id="skm" class="mono" inputmode="numeric" placeholder="402110" value="${esc(S.shift.startKm)}"></div>
+  <div class="field"><div class="lbl">Finish mileage (km)</div><input id="fkm" class="mono" inputmode="numeric" placeholder="402540" value="${esc(S.shift.finishKm)}"></div>
+  <button class="btn amber" data-act="finishShift">Finish shift &amp; build sheet</button>`;
+}
+function vSheet(){
+  const total=diffH(S.shift.startTime,S.shift.finishTime);
+  const pages=Math.max(1,Math.ceil(S.shift.stops.length/10));
+  const km=(S.shift.finishKm&&S.shift.startKm)?(Number(S.shift.finishKm)-Number(S.shift.startKm)):"";
+  return `
+  <div class="muted" style="margin-bottom:14px">${pages>1?pages+" pages · same date, header repeats":"1 page"} ·
+    total <b style="color:var(--hi)">${hDec(total)} h</b>${km!==""?` · ${km} km`:""}</div>
+  <div class="card">
+    <div class="row"><span class="k">Date</span><span class="v">${S.shift.date}</span></div>
+    <div class="row"><span class="k">Truck</span><span class="v">${esc(S.shift.truck)}</span></div>
+    <div class="row"><span class="k">Start / Finish</span><span class="v mono">${fmtT(S.shift.startTime)} → ${fmtT(S.shift.finishTime)}</span></div>
+    <div class="row"><span class="k">Stops</span><span class="v">${S.shift.stops.length}</span></div>
+  </div>
+  <button class="btn go mt" data-act="pdfRun">Save run sheet PDF</button>
+  <button class="btn blue mt" data-act="go" data-v="week">See weekly timesheet</button>
+  <button class="btn dark mt" data-act="fileShift">File shift &amp; go home</button>
+  <p class="note">The PDF reproduces the United Brothers run sheet exactly — office-only fields
+  (2nd temp, bill of lading, reefer, hours, dispatch, signature) are left blank for signing on print.</p>`;
+}
+function vWeek(){
+  const all=S.past;
+  const mon=mondayOf(new Date()); const to=new Date(mon); to.setDate(mon.getDate()+6);
+  const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  let wk=0, worked=0; const rows=[];
+  for(let i=0;i<7;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i);
+    const sh=all.find(s=>s.date===todayStr(d)); const h=sh?diffH(sh.startTime,sh.finishTime):0;
+    if(sh) worked++; wk+=h;
+    rows.push(`<div class="row"><span class="k">${days[i]}</span>
+      <span class="v mono">${sh?fmtT(sh.startTime):"--:--"} → ${sh?fmtT(sh.finishTime):"--:--"}${h?"  ·  "+hDec(h)+" h":""}</span></div>`);
+  }
+  return `
+  <div class="card">
+    <div class="lbl">Week of ${todayStr(mon)} → ${todayStr(to)}</div>
+    <div style="display:flex;gap:16px;margin-top:12px">
+      <div class="stat"><div class="lbl">Hours</div><div class="n mono" style="color:var(--amber)">${hDec(wk)||"0.00"}</div></div>
+      <div class="stat"><div class="lbl">Days</div><div class="n">${worked}</div></div>
+      <div class="stat"><div class="lbl">Avg / day</div><div class="n mono">${worked?hDec(wk/worked):"0.00"}</div></div>
+    </div>
+    <div class="muted" style="margin-top:10px">${esc(S.profile.name)}${S.profile.corp?" · "+esc(S.profile.corp):""}</div>
+  </div>
+  <div class="lbl" style="margin:20px 2px 8px">Daily breakdown</div>
+  <div class="card">${rows.join("")}
+    <div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
+      <span class="k" style="font-weight:600;color:var(--hi)">Week total</span>
+      <span class="v mono" style="color:var(--amber)">${hDec(wk)||"0.00"} h</span></div>
+  </div>
+  <button class="btn go mt" data-act="pdfWeek">Save weekly timesheet PDF</button>`;
+}
+function vSheets(){
+  const dayList=S.past.map((s,i)=>({s,i})).filter(e=>e.s.done)
+    .sort((a,b)=>(b.s.startTime||0)-(a.s.startTime||0));
+  const dayRows = dayList.length ? dayList.map(({s,i})=>{
+    const h=diffH(s.startTime,s.finishTime);
+    const km=(s.finishKm&&s.startKm)?(Number(s.finishKm)-Number(s.startKm)):"";
+    const wd=WD[parseDate(s.date).getDay()];
+    return `<button class="stoprow" data-act="pdfDay" data-i="${i}">
+      <div style="flex:1">
+        <div style="font-weight:600">${s.date} · ${wd}</div>
+        <div class="sub mono">${hDec(h)||"0.00"} h${km!==""?" · "+km+" km":""} · ${(s.stops||[]).length} stops</div>
+      </div>
+      <div style="color:var(--blue);font-size:13px;white-space:nowrap">PDF ›</div>
+    </button>`;
+  }).join("") : `<div class="card muted">No saved run sheets yet. Finish a shift and it'll appear here.</div>`;
+
+  const weekMap={};
+  S.past.filter(s=>s.done).forEach(s=>{ const m=todayStr(mondayOf(parseDate(s.date))); (weekMap[m]=weekMap[m]||[]).push(s); });
+  const weekKeys=Object.keys(weekMap).sort().reverse();
+  const weekRows = weekKeys.length ? weekKeys.map(m=>{
+    const listw=weekMap[m]; let tot=0; listw.forEach(s=>tot+=diffH(s.startTime,s.finishTime));
+    return `<button class="stoprow" data-act="pdfWeekOf" data-mon="${m}">
+      <div style="flex:1">
+        <div style="font-weight:600">Week of ${m}</div>
+        <div class="sub mono">${hDec(tot)||"0.00"} h · ${listw.length} day${listw.length>1?"s":""}</div>
+      </div>
+      <div style="color:var(--blue);font-size:13px;white-space:nowrap">PDF ›</div>
+    </button>`;
+  }).join("") : `<div class="card muted">No weekly timesheets yet.</div>`;
+
+  return `
+    <div class="lbl" style="margin:4px 2px 10px">Daily run sheets</div>
+    ${dayRows}
+    <div class="lbl" style="margin:22px 2px 10px">Weekly timesheets</div>
+    ${weekRows}
+    <p class="note">Every finished day and week is saved on this phone. Tap any to regenerate its PDF — identical each time. (Once we add the office database, these sync there too.)</p>`;
+}
+
+/* ---------- live editing helpers ---------- */
+function blankNext(){ return {company:"",city:"",trailer:"",bobtail:false,status:null,fuel:"",temp:"",timeIn:null,timeOut:null,remarks:""}; }
+function activeStop(){
+  if(S.view==="editStop") return S.draft;
+  if(S.view==="shift" && S.shift && S.shift.phase==="atStop") return S.shift.stops[S.shift.stops.length-1];
+  return null;
+}
+function syncLive(){
+  const g=id=>document.getElementById(id);
+  const o=activeStop();
+  if(o){
+    if(g("trailer")&&!o.bobtail) o.trailer=g("trailer").value;
+    if(g("temp")) o.temp=g("temp").value;
+    if(g("company")) o.company=g("company").value;
+    if(g("city")) o.city=g("city").value;
+    if(g("remarks")) o.remarks=g("remarks").value;
+  }
+  if(S.view==="shift" && S.shift && S.shift.next){
+    if(g("nextCompany")) S.shift.next.company=g("nextCompany").value;
+    if(g("nextCity")) S.shift.next.city=g("nextCity").value;
+  }
+}
+
+/* ---------- actions ---------- */
+document.addEventListener("click", e=>{
+  const t=e.target.closest("[data-act]"); if(!t) return;
+  const a=t.dataset.act;
+  if(a==="go"){ go(t.dataset.v); return; }
+  if(a==="tab"){ const tab=t.dataset.tab;
+    if(S.view==="shift"||S.view==="editStop") syncLive();
+    if(tab==="shift") go(S.shift&&!S.shift.done?"shift":"home"); else go(tab);
+    return; }
+  if(a==="saveProfile"){
+    S.profile={ name:(document.getElementById("pn").value.trim()||"Driver"),
+      corp:document.getElementById("pc").value.trim(),
+      homeBase:document.getElementById("ph").value.trim() };
+    persist(); go("home"); return;
+  }
+  if(a==="startShift"){
+    const truck=document.getElementById("truck").value.trim();
+    if(!truck){ toast("Enter today's truck #"); return; }
+    const company=document.getElementById("startCo").value.trim();
+    const city=document.getElementById("startCity").value.trim();
+    const t=Date.now();
+    S.shift={ id:t, date:todayStr(), truck, startCompany:company, startCity:city, startTime:t, finishTime:null,
+      phase:"atStop", next:blankNext(), endCompany:company,
+      stops:[ {trailer:"",bobtail:false,status:null,fuel:"",temp:"",company,city,timeIn:t,timeOut:null,remarks:"",pinned:"start"} ],
+      startKm:"", finishKm:"", done:false };
+    persist(); go("shift"); return;
+  }
+  if(a==="editStop"){ S.editMode="edit"; S.editIdx=Number(t.dataset.i); S.draft={...S.shift.stops[S.editIdx]}; go("editStop"); return; }
+  if(a==="bobtail"){ syncLive(); const o=activeStop(); if(o){o.bobtail=!o.bobtail; if(o.bobtail)o.trailer="";} render(); return; }
+  if(a==="status"){ syncLive(); const o=activeStop(); const s=t.dataset.s; if(o){o.status=s; if(s==="empty"){o.fuel="";o.temp="";}} render(); return; }
+  if(a==="fuel"){ syncLive(); const o=activeStop(); if(o)o.fuel=t.dataset.f; render(); return; }
+  if(a==="stamp"){ syncLive(); if(S.view==="editStop"&&S.draft){ S.draft[t.dataset.w==="in"?"timeIn":"timeOut"]=Date.now(); } render(); return; }
+  if(a==="saveStop"){
+    syncLive();
+    S.shift.stops[S.editIdx]={...S.draft};
+    if(S.draft.pinned==="end") S.shift.endCompany=S.draft.company;
+    persist(); go("shift"); return;
+  }
+  if(a==="depart"){
+    syncLive();
+    if(!S.shift.next || !(S.shift.next.company||"").trim()){ toast("Enter your next stop, or use Return to yard"); return; }
+    S.shift.stops[S.shift.stops.length-1].timeOut=Date.now();
+    S.shift.phase="driving"; persist(); go("shift"); return;
+  }
+  if(a==="returnToYard"){
+    syncLive();
+    S.shift.next={...blankNext(), company:(S.shift.endCompany||S.profile.homeBase||S.shift.startCompany||""), pinned:"end"};
+    S.shift.stops[S.shift.stops.length-1].timeOut=Date.now();
+    S.shift.phase="driving"; persist(); go("shift"); return;
+  }
+  if(a==="arrive"){
+    syncLive();
+    const n=S.shift.next; n.timeIn=Date.now(); n.timeOut=null;
+    if(n.pinned==="end") S.shift.endCompany=n.company;
+    S.shift.stops.push(n); S.shift.next=blankNext(); S.shift.phase="atStop"; persist(); go("shift"); return;
+  }
+  if(a==="endShift"){ syncLive(); go("final"); return; }
+  if(a==="finishShift"){
+    S.shift.startKm=document.getElementById("skm").value.trim();
+    S.shift.finishKm=document.getElementById("fkm").value.trim();
+    const t=Date.now();
+    S.shift.stops[S.shift.stops.length-1].timeOut=t;
+    S.shift.finishTime=t; S.shift.done=true;
+    upsertPast(S.shift);
+    persist(); go("sheet"); return;
+  }
+  if(a==="fileShift"){ S.shift=null; persist(); go("home"); return; }
+  if(a==="pdfRun"){ makeRunSheet(S.shift); return; }
+  if(a==="pdfWeek"){ makeWeekly(); return; }
+  if(a==="pdfDay"){ makeRunSheet(S.past[Number(t.dataset.i)]); return; }
+  if(a==="pdfWeekOf"){ makeWeekly(parseDate(t.dataset.mon)); return; }
+  if(a==="print"){ S.view==="sheet"?makeRunSheet(S.shift):makeWeekly(); return; }
+});
+
+/* keep uncontrolled text in state as the driver types */
+app.addEventListener("input", e=>{ if(S.view==="editStop"||S.view==="shift") syncLive(); });
+
+/* live elapsed clock on the shift screen */
+setInterval(()=>{ if(S.view==="shift"&&S.shift){ const el=document.getElementById("elapsed");
+  if(el) el.textContent=hHM(diffH(S.shift.startTime,Date.now())); } },1000);
+
+/* =========================================================
+   PDF GENERATION — strict United Brothers layout (pdf-lib)
+   ========================================================= */
+async function sharePdf(bytes, filename){
+  const blob=new Blob([bytes],{type:"application/pdf"});
+  try{
+    const file=new File([blob],filename,{type:"application/pdf"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:filename}); return; }
+  }catch(e){}
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  toast("PDF saved");
+}
+
+async function makeRunSheet(shift){
+  if(!PDFLib){ toast("PDF library still loading…"); return; }
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;
+  const doc=await PDFDocument.create();
+  const F=await doc.embedFont(StandardFonts.Helvetica);
+  const B=await doc.embedFont(StandardFonts.HelveticaBold);
+  const sh=shift||S.shift, pr=S.profile;
+  const total=hDec(diffH(sh.startTime,sh.finishTime));
+  const stops=sh.stops||[];
+  const pages=Math.max(1,Math.ceil(stops.length/10));
+  for(let p=0;p<pages;p++){
+    const rows=stops.slice(p*10,p*10+10);
+    drawRunPage(doc,F,B,rgb,sh,pr,rows,total,p+1,pages);
+  }
+  const bytes=await doc.save();
+  await sharePdf(bytes, `UBT_RunSheet_${sh.date}.pdf`);
+}
+
+function drawRunPage(doc,F,B,rgb,sh,pr,rows,total,page,pages){
+  const W=792,H=612,pg=doc.addPage([W,H]);
+  const ink=rgb(0.1,0.1,0.09), grey=rgb(0.45,0.45,0.43);
+  const T=y=>H-y;                                  // top-based y helper
+  const line=(x1,y1,x2,y2,w=0.7,c=ink)=>pg.drawLine({start:{x:x1,y:T(y1)},end:{x:x2,y:T(y2)},thickness:w,color:c});
+  const box=(x,y,w,h,t=0.7)=>pg.drawRectangle({x,y:T(y+h),width:w,height:h,borderColor:ink,borderWidth:t});
+  const txt=(s,x,y,size=8,f=F,c=ink)=>{ if(s==null||s==="")return; pg.drawText(String(s),{x,y:T(y),size,font:f,color:c}); };
+  const ctr=(s,x,w,y,size=8,f=F,c=ink)=>{ if(s==null||s==="")return; const tw=f.widthOfTextAtSize(String(s),size); txt(s,x+(w-tw)/2,y,size,f,c); };
+
+  const M=22, right=W-M;
+  /* ---- header band ---- */
+  box(M,M,right-M,66);
+  // left labelled cells
+  const lx=M, lw=150; const cells=[["DATE",sh.date],["START TIME",fmtT(sh.startTime)],["FINISH TIME",fmtT(sh.finishTime)],["TOTAL HOURS",total]];
+  cells.forEach((c,i)=>{ const y=M+i*16.5; line(lx,y,lx+lw,y,0.5); txt(c[0],lx+3,y+11,7,B); txt(c[1],lx+70,y+11,8,F); });
+  line(lx+lw,M,lx+lw,M+66,0.5); line(lx+66,M,lx+66,M+66,0.4);
+  // centre title
+  ctr("UNITED BROTHERS TRANSPORT LIMITED",lx+lw,right-(lx+lw)-160,M+30,13,B);
+  // right cells NAME / TRUCK #
+  const rx=right-160;
+  line(rx,M,rx,M+66,0.5);
+  line(rx,M+33,right,M+33,0.5);
+  txt("NAME",rx+4,M+14,7,B); txt(pr.name,rx+4,M+27,9,F);
+  txt("TRUCK #",rx+4,M+47,7,B); txt(sh.truck,rx+4,M+60,9,F);
+  if(pages>1) txt(`page ${page}/${pages}`,right-52,M+64,6,F,grey);
+
+  /* ---- table ---- */
+  const cols=[
+    ["TRAILER #",70],["LOAD",26],["EMPTY",30],["FUEL LEVEL",74],["TEMP",30],
+    ["CUSTOMER",250],["TEMP",30],["BILL OF LADING #",88],["REMARKS",right-M-70-26-30-74-30-250-30-88]
+  ];
+  const xs=[]; let cx=M; cols.forEach(c=>{ xs.push(cx); cx+=c[1]; });
+  const tTop=M+72, hHdr=18, rH=30, tableW=right-M;
+  const check=(cxp,cyTop)=>{ line(cxp-4,cyTop,cxp-1,cyTop+3,1.2); line(cxp-1,cyTop+3,cxp+5,cyTop-4,1.2); };
+  // header row
+  box(M,tTop,tableW,hHdr);
+  cols.forEach((c,i)=>{ if(i) line(xs[i],tTop,xs[i],tTop+hHdr+rH*10,0.5); ctr(c[0],xs[i],c[1],tTop+12,c[1]<40?5.5:6.5,B); });
+  // data rows
+  for(let r=0;r<10;r++){
+    const y=tTop+hHdr+r*rH; line(M,y+rH,right,y+rH,0.5);
+    const s=rows[r];
+    // pre-printed template labels (present on every blank row)
+    const fx=xs[3]+5, fy=y+4;
+    const grid=[["Empty",fx,fy],["Qtr",fx+36,fy],["Half",fx,fy+13],["Full",fx+36,fy+13]];
+    grid.forEach(g=>txt(g[0],g[1],g[2]+12,5.5,F,grey));
+    const midX=xs[5]+cols[5][1]/2;
+    txt("Name:",xs[5]+3,y+11,6,F,grey);
+    txt("City:",midX,y+11,6,F,grey);
+    txt("Time In:",xs[5]+3,y+25,6,F,grey);
+    txt("Time Out:",midX,y+25,6,F,grey);
+    if(!s) continue;
+    // filled values
+    txt(s.bobtail?"Bobtail":(s.trailer||""),xs[0]+3,y+18,7,B);
+    if(s.status==="load")  check(xs[1]+cols[1][1]/2, y+16);
+    if(s.status==="empty") check(xs[2]+cols[2][1]/2, y+16);
+    if(s.status==="load"){ const gi=grid.find(g=>g[0]===s.fuel);
+      if(gi){ const w=F.widthOfTextAtSize(gi[0],5.5);
+        pg.drawEllipse({x:gi[1]+w/2,y:T(gi[2]+9.5),xScale:w/2+3.5,yScale:5,borderColor:ink,borderWidth:0.7}); } }
+    if(s.status==="load"&&s.temp) ctr(s.temp,xs[4],cols[4][1],y+19,7,B);
+    txt(s.company||"",xs[5]+32,y+11,7,B);
+    txt(s.city||"",midX+24,y+11,7,B);
+    txt(fmtT(s.timeIn)||"",xs[5]+42,y+25,7,B);
+    txt(fmtT(s.timeOut)||"",midX+48,y+25,7,B);
+    txt((s.remarks||"").slice(0,40),xs[8]+3,y+13,6.5,B);
+    if((s.remarks||"").length>40) txt(s.remarks.slice(40,80),xs[8]+3,y+23,6.5,B);
+  }
+
+  /* ---- footer ---- */
+  const fTop=tTop+hHdr+rH*10+8, fH=44;
+  const km=(sh.finishKm&&sh.startKm)?(Number(sh.finishKm)-Number(sh.startKm)):"";
+  const fcols=[["TRUCK MILEAGE",150],["REEFER #",70],["HOURS",150],["DRIVER SIGNATURE",130],["DISPATCH APPROVED",tableW-150-70-150-130]];
+  let fx2=M; const fxs=[]; fcols.forEach(c=>{fxs.push(fx2);fx2+=c[1];});
+  box(M,fTop,tableW,fH);
+  fcols.forEach((c,i)=>{ if(i) line(fxs[i],fTop,fxs[i],fTop+fH,0.5); txt(c[0],fxs[i]+3,fTop+9,6.5,B); });
+  // mileage values
+  txt("Start "+(sh.startKm||"—"),fxs[0]+4,fTop+22,7);
+  txt("Finish "+(sh.finishKm||"—"),fxs[0]+4,fTop+32,7);
+  txt("Total "+(km!==""?km+" km":"—"),fxs[0]+4,fTop+42,7,B);
+  txt("— office —",fxs[1]+4,fTop+26,6.5,F,grey);
+  txt("Start / Finish  — office —",fxs[2]+4,fTop+26,6.5,F,grey);
+  txt("(signed on print)",fxs[3]+4,fTop+30,6.5,F,grey);
+  txt("— office —",fxs[4]+4,fTop+26,6.5,F,grey);
+
+  /* ---- note + comments ---- */
+  const nY=fTop+fH+14;
+  txt("NOTE:  FUEL LEVEL FOR ALL REEFERS MUST BE AT A MINIMUM LEVEL OF HALF IF DROPPED IN ANY YARD",M,nY,7,B);
+  txt("COMMENTS",M,nY+18,7,B);
+  line(M+62,nY+18,right,nY+18,0.5);
+}
+
+async function makeWeekly(monArg){
+  if(!PDFLib){ toast("PDF library still loading…"); return; }
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;
+  const doc=await PDFDocument.create();
+  const F=await doc.embedFont(StandardFonts.Helvetica);
+  const B=await doc.embedFont(StandardFonts.HelveticaBold);
+  const W=612,H=792,pg=doc.addPage([W,H]);
+  const ink=rgb(0.1,0.1,0.09), grey=rgb(0.5,0.5,0.48), shade=rgb(0.91,0.91,0.88);
+  const T=y=>H-y;
+  const txt=(s,x,y,size=11,f=F,c=ink)=>{ if(s==null||s==="")return; pg.drawText(String(s),{x,y:T(y),size,font:f,color:c}); };
+  const ctr=(s,x,w,y,size,f=F,c=ink)=>{ if(s==null||s==="")return; const tw=f.widthOfTextAtSize(String(s),size); txt(s,x+(w-tw)/2,y,size,f,c); };
+  const line=(x1,y1,x2,y2,w=0.6)=>pg.drawLine({start:{x:x1,y:T(y1)},end:{x:x2,y:T(y2)},thickness:w,color:ink});
+  const box=(x,topY,w,h,fill)=>pg.drawRectangle({x,y:T(topY+h),width:w,height:h,borderColor:ink,borderWidth:0.8,color:fill});
+
+  ctr("United Brothers Transport Ltd.",0,W,74,17,B);
+  ctr("Weekly Timesheet",0,W,96,13,F);
+
+  const all=S.past;
+  const mon=monArg?new Date(monArg):mondayOf(new Date()); const to=new Date(mon); to.setDate(mon.getDate()+6);
+
+  // info fields (boxed, like the form)
+  txt("Name:",55,146,12,B);        box(112,132,300,20); txt(S.profile.name,120,146,12,F);
+  txt("Corporation:",55,180,12,B); box(140,166,272,20); txt(S.profile.corp||"",148,180,12,F);
+  txt("Date from:",55,214,12,B);   box(128,200,110,20); txt(todayStr(mon),136,214,11,F);
+  txt("Date to:",300,214,12,B);    box(360,200,110,20); txt(todayStr(to),368,214,11,F);
+
+  // table columns: [x, width]
+  const day=[55,95], tin=[158,145], tout=[311,145], tot=[464,90];
+  const hdrTop=262, rowTop=286, rH=34;
+  // header row (shaded)
+  box(tin[0],hdrTop,tin[1],22,shade);  ctr("Time In",tin[0],tin[1],hdrTop+15,11,B);
+  box(tout[0],hdrTop,tout[1],22,shade); ctr("Time Out",tout[0],tout[1],hdrTop+15,11,B);
+  box(tot[0],hdrTop,tot[1],22,shade);   ctr("Total Hours",tot[0],tot[1],hdrTop+15,9.5,B);
+
+  const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  let week=0;
+  days.forEach((dname,i)=>{
+    const top=rowTop+i*rH, mid=top+rH/2+4;
+    const d=new Date(mon); d.setDate(mon.getDate()+i);
+    const sh=all.find(s=>s.date===todayStr(d)); const h=sh?diffH(sh.startTime,sh.finishTime):0; week+=h;
+    box(day[0],top+3,day[1],rH-8);   txt(dname,day[0]+8,mid,11,B);
+    box(tin[0],top+3,tin[1],rH-8);   txt(sh?fmtT(sh.startTime):"",tin[0]+10,mid,12,F);  txt("am / pm",tin[0]+tin[1]-50,mid,9,F,grey);
+    box(tout[0],top+3,tout[1],rH-8); txt(sh?fmtT(sh.finishTime):"",tout[0]+10,mid,12,F); txt("am / pm",tout[0]+tout[1]-50,mid,9,F,grey);
+    box(tot[0],top+3,tot[1],rH-8);   ctr(h?hDec(h):"",tot[0],tot[1],mid,12,F);
+  });
+
+  // week total
+  const wTop=rowTop+7*rH+12;
+  txt("Week Total",tout[0]+tout[1]-96,wTop+16,12,B);
+  box(tot[0],wTop,tot[1],24,shade); ctr(hDec(week)+" h",tot[0],tot[1],wTop+16,12,B);
+
+  // comments
+  const cY=wTop+64;
+  txt("Comments:",55,cY,12,B);
+  line(130,cY+2,557,cY+2,0.6); line(55,cY+28,557,cY+28,0.6); line(55,cY+54,557,cY+54,0.6);
+
+  const bytes=await doc.save();
+  await sharePdf(bytes, `UBT_Timesheet_${todayStr(mon)}.pdf`);
+}
+
+render();
+</script>
+</body>
+</html>
