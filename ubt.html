@@ -164,7 +164,7 @@ function loadState(){
     const view = !o.profile ? "setup" : (shift && !shift.done ? "shift" : "home");
     return {profile:o.profile||null, past:o.past||[], shift, view, editMode:"edit", editIdx:null, draft:null}; }
   }catch(e){}
-  return {profile:null, past:seedWeek(), shift:null, view:"setup", editMode:"edit", editIdx:null, draft:null};
+  return {profile:null, past:[], shift:null, view:"setup", editMode:"edit", editIdx:null, draft:null};
 }
 function persist(){
   const status = document.getElementById("saveStatus");
