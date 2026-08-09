@@ -136,7 +136,21 @@ const pad = n => String(n).padStart(2,"0");
 /* Round official shift start/end times to nearest 15 minutes */
 function round15(ms){
   if(ms==null) return null;
-  return Math.round(ms / 900000) * 900000;
+
+  const d = new Date(ms);
+  d.setSeconds(0,0);
+
+  const minutes = d.getMinutes();
+  const roundedMinutes = Math.round(minutes / 5) * 5;
+
+  if(roundedMinutes === 60){
+    d.setHours(d.getHours() + 1);
+    d.setMinutes(0);
+  } else {
+    d.setMinutes(roundedMinutes);
+  }
+
+  return d.getTime();
 }
 
 /* Display the exact stored clock time.
