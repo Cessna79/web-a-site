@@ -25,6 +25,16 @@
   .brand{font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
   .title{font-size:17px;font-weight:600}
   main{padding:16px}
+  .save-status{
+  font-size:11px;
+  color:var(--go);
+  white-space:nowrap;
+  opacity:.9;
+}
+
+.save-status.saving{
+  color:var(--amber);
+}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
   .lbl{font-size:12px;color:var(--mid);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
   input,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
@@ -84,7 +94,7 @@
       <div class="brand">United Brothers Transport</div>
       <div class="title" id="scr">Loading…</div>
     </div>
-    <div id="navR"></div>
+    <div id="navR">   <span id="saveStatus" class="save-status">✓ Saved</span> </div>
   </header>
   <main id="app"></main>
 </div>
@@ -156,7 +166,25 @@ function loadState(){
   }catch(e){}
   return {profile:null, past:seedWeek(), shift:null, view:"setup", editMode:"edit", editIdx:null, draft:null};
 }
-function persist(){ store.set("ubt", JSON.stringify({profile:S.profile, past:S.past, shift:S.shift})); }
+function persist(){
+  const status = document.getElementById("saveStatus");
+
+  if(status){
+    status.textContent = "Saving…";
+    status.classList.add("saving");
+  }
+
+  store.set("ubt", JSON.stringify({
+    profile:S.profile,
+    past:S.past,
+    shift:S.shift
+  }));
+
+  if(status){
+    status.textContent = "✓ Saved";
+    status.classList.remove("saving");
+  }
+}
 function upsertPast(sh){ const c=JSON.parse(JSON.stringify(sh)); const i=S.past.findIndex(x=>x.id===sh.id); if(i>=0) S.past[i]=c; else S.past.push(c); }
 S = loadState();
 
@@ -264,7 +292,11 @@ function stopFieldsHtml(d){
   <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>`;
 }
 function vShift(){
-  const sh=S.shift, el=hHM(diffH(sh.startTime,Date.now()));
+const sh=S.shift, el=hHM(diffH(sh.startTime,Date.now()));
+
+const current = sh.stops && sh.stops.length
+  ? sh.stops[sh.stops.length-1]
+  : null;
   const cur=sh.stops[sh.stops.length-1];
   const list=sh.stops.map((s,i)=>stopRowHtml(s,i)).join("");
   const head=`
@@ -515,7 +547,18 @@ document.addEventListener("click", e=>{
     if(n.pinned==="end") S.shift.endCompany=n.company;
     S.shift.stops.push(n); S.shift.next=blankNext(); S.shift.phase="atStop"; persist(); go("shift"); return;
   }
-  if(a==="endShift"){ syncLive(); go("final"); return; }
+  if(a==="endShift"){
+  syncLive();
+
+  const ok = confirm(
+    "End this shift?\n\nMake sure you are back at the yard and have completed this stop."
+  );
+
+  if(!ok) return;
+
+  go("final");
+  return;
+}
   if(a==="finishShift"){
     S.shift.startKm=document.getElementById("skm").value.trim();
     S.shift.finishKm=document.getElementById("fkm").value.trim();
