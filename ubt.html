@@ -379,15 +379,43 @@ function vEditStop(){
   <button class="btn go" data-act="saveStop">${S.editMode==="next"?"Save next stop":"Save"}</button>`;
 }
 function vFinal(){
-  const end=S.shift.stops[S.shift.stops.length-1];
-  return `
-  <p class="muted" style="margin-top:0">Enter odometer readings to finish. Ending at
-  <b style="color:var(--hi)">${esc(end.company)||"the yard"}</b> — the app stamps the yard depart as your
-  finish time and works out total hours and daily kilometres.</p>
-  <div class="field"><div class="lbl">Start mileage (km)</div><input id="skm" class="mono" inputmode="numeric" placeholder="402110" value="${esc(S.shift.startKm)}"></div>
-  <div class="field"><div class="lbl">Finish mileage (km)</div><input id="fkm" class="mono" inputmode="numeric" placeholder="402540" value="${esc(S.shift.finishKm)}"></div>
-  <button class="btn amber" data-act="finishShift">Finish shift &amp; build sheet</button>`;
+const end=S.shift.stops[S.shift.stops.length-1];
+const startKm=String(S.shift.startKm || "");
+
+return `
+
+  <p class="muted" style="margin-top:0">
+    Enter the final odometer reading to finish. Ending at
+    <b style="color:var(--hi)">${esc(end.company)||"the yard"}</b> — the app will
+    calculate your total hours and daily kilometres.
+  </p>
+
+  <div class="card">
+    <div class="lbl">Start mileage</div>
+    <div class="mono" style="font-size:22px;font-weight:700;margin-top:6px">
+      ${esc(startKm)} km
+    </div>
+  </div>
+
+  <div class="field mt">
+    <div class="lbl">Finish mileage (km)</div>
+    <input id="fkm" class="mono" inputmode="numeric"
+      placeholder="Enter finish odometer"
+      value="${esc(S.shift.finishKm || "")}">
+  </div>
+
+  <div class="card mt">
+    <div class="lbl">Distance</div>
+    <div id="distancePreview" class="mono" style="font-size:22px;font-weight:700;margin-top:6px">
+      —
+    </div>
+  </div>
+
+  <button class="btn amber mt" data-act="finishShift">
+    Finish shift &amp; build sheet
+  </button>`;
 }
+
 function vSheet(){
   const total=diffH(S.shift.startTime,S.shift.finishTime);
   const pages=Math.max(1,Math.ceil(S.shift.stops.length/10));
