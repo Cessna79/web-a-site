@@ -248,10 +248,16 @@ function vHome(){
   <div class="card mt">
     <div class="lbl">Starting from — company</div>
     <input id="startCo" class="mt" style="margin-bottom:12px" placeholder="Start company / yard" value="${esc(S.profile.homeBase||"")}">
+
     <div class="lbl">City</div>
     <input id="startCity" class="mt" style="margin-bottom:12px" placeholder="City">
+
     <div class="lbl">Today's truck</div>
     <input id="truck" class="mono mt" style="margin-bottom:12px" placeholder="Truck #  e.g. T-118">
+
+    <div class="lbl">Start mileage (km)</div>
+    <input id="startKm" class="mono mt" style="margin-bottom:12px" inputmode="numeric" placeholder="Starting odometer">
+
     <button class="btn go" data-act="startShift">Start shift</button>
   </div>
   <button class="btn dark mt" data-act="go" data-v="setup">Edit profile</button>
