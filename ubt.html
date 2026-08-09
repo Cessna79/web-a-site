@@ -145,7 +145,17 @@ const fmtT = ms => ms==null ? "" : (d=>{
 
 const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 function todayStr(d=new Date()){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-function diffH(s,f){ if(s==null||f==null) return 0; let ms=f-s; if(ms<0) ms+=864e5; return ms/36e5; }
+function diffH(s,f){
+  if(s==null||f==null) return 0;
+
+  const start = round15(s);
+  const finish = round15(f);
+
+  let ms = finish - start;
+  if(ms<0) ms += 864e5;
+
+  return ms/36e5;
+}
 const hDec = h => h ? (Math.round(h*100)/100).toFixed(2) : "";
 const hHM = h => { if(!h) return "00:00"; const t=Math.round(h*60); return `${pad(Math.floor(t/60))}:${pad(t%60)}`; };
 function mondayOf(d){ const x=new Date(d); const w=(x.getDay()+6)%7; x.setDate(x.getDate()-w); x.setHours(0,0,0,0); return x; }
