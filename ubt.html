@@ -513,15 +513,20 @@ document.addEventListener("click", e=>{
     persist(); go("home"); return;
   }
   if(a==="startShift"){
-    const truck=document.getElementById("truck").value.trim();
-    if(!truck){ toast("Enter today's truck #"); return; }
-    const company=document.getElementById("startCo").value.trim();
-    const city=document.getElementById("startCity").value.trim();
-    const t=Date.now();
-    S.shift={ id:t, date:todayStr(), truck, startCompany:company, startCity:city, startTime:t, finishTime:null,
+const truck=document.getElementById("truck").value.trim();
+if(!truck){ toast("Enter today's truck #"); return; }
+
+const startKm=document.getElementById("startKm").value.trim();
+if(!startKm){ toast("Enter starting mileage"); return; }
+
+const company=document.getElementById("startCo").value.trim();
+const city=document.getElementById("startCity").value.trim();
+const t=Date.now();
+
+S.shift={ id:t, date:todayStr(), truck, startCompany:company, startCity:city, startTime:t, finishTime:null,
       phase:"atStop", next:blankNext(), endCompany:company,
       stops:[ {trailer:"",bobtail:false,status:null,fuel:"",temp:"",company,city,timeIn:t,timeOut:null,remarks:"",pinned:"start"} ],
-      startKm:"", finishKm:"", done:false };
+startKm:startKm, finishKm:"", done:false };
     persist(); go("shift"); return;
   }
   if(a==="editStop"){ S.editMode="edit"; S.editIdx=Number(t.dataset.i); S.draft={...S.shift.stops[S.editIdx]}; go("editStop"); return; }
@@ -566,15 +571,20 @@ document.addEventListener("click", e=>{
   return;
 }
 if(a==="finishShift"){
-  const startKm=document.getElementById("skm").value.trim();
   const finishKm=document.getElementById("fkm").value.trim();
+  const startKm=String(S.shift.startKm || "").trim();
 
-  if(!startKm || !finishKm){
-    toast("Enter both start and finish mileage");
+  if(!startKm){
+    toast("Start mileage is missing from this shift");
     return;
   }
 
-  if(!/^\d+(\.\d+)?$/.test(startKm) || !/^\d+(\.\d+)?$/.test(finishKm)){
+  if(!finishKm){
+    toast("Enter finish mileage");
+    return;
+  }
+
+  if(!/^\d+(\.\d+)?$/.test(finishKm)){
     toast("Mileage must contain numbers only");
     return;
   }
@@ -584,7 +594,6 @@ if(a==="finishShift"){
     return;
   }
 
-  S.shift.startKm=startKm;
   S.shift.finishKm=finishKm;
 
   const t=Date.now();
