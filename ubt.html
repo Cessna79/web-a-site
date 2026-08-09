@@ -238,7 +238,11 @@ return `
 <input id="startCity" class="mt" style="margin-bottom:12px" placeholder="City">
 
 <div class="lbl">Today's truck</div>
-<input id="truck" class="mono mt" style="margin-bottom:12px" placeholder="Truck #  e.g. T-118">
+<input id="truck" class="mono mt"
+       style="margin-bottom:12px"
+       inputmode="numeric"
+       pattern="[0-9]*"
+       placeholder="Truck #">
 
 <div class="lbl">Start mileage (km)</div>
 <input id="startKm" class="mono mt" style="margin-bottom:12px" inputmode="numeric" placeholder="Starting odometer">
