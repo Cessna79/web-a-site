@@ -140,19 +140,7 @@ function mondayOf(d){ const x=new Date(d); const w=(x.getDay()+6)%7; x.setDate(x
 function parseDate(s){ const p=String(s).split("-").map(Number); return new Date(p[0],(p[1]||1)-1,p[2]||1); }
 const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-/* ---------- seed a couple of prior weekdays so the timesheet has data ---------- */
-function seedWeek(){
-  const mon = mondayOf(new Date()), out=[];
-  const doneDays = (new Date().getDay()+6)%7;
-  for(let o=0;o<doneDays && o<2;o++){
-    const d=new Date(mon); d.setDate(mon.getDate()+o);
-    const s=new Date(d); s.setHours(6,30,0,0);
-    const f=new Date(d); f.setHours(16+o,15,0,0);
-    out.push({id:s.getTime(),date:todayStr(d),truck:"T-118",startCompany:"UBT Yard",
-      startTime:s.getTime(),finishTime:f.getTime(),stops:[],startKm:"402110",finishKm:"402540",done:true});
-  }
-  return out;
-}
+
 
 /* ---------- state ---------- */
 let S;
