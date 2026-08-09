@@ -239,30 +239,29 @@ function vSetup(){
   <button class="btn go" data-act="saveProfile">Save profile</button>`;
 }
 function vHome(){
-  return `
-  <div class="card">
-    <div class="row"><span class="k">Driver</span><span class="v">${esc(S.profile.name)}</span></div>
-    <div class="row"><span class="k">Date</span><span class="v">${todayStr()}</span></div>
-    <div class="row"><span class="k">Status</span><span class="v" style="color:var(--mid)">Off duty</span></div>
-  </div>
-  <div class="card mt">
-    <div class="lbl">Starting from — company</div>
-    <input id="startCo" class="mt" style="margin-bottom:12px" placeholder="Start company / yard" value="${esc(S.profile.homeBase||"")}">
+return `
 
-    <div class="lbl">City</div>
-    <input id="startCity" class="mt" style="margin-bottom:12px" placeholder="City">
+<div class="lbl">Starting company / yard</div>
+<input id="startCo" class="mt" style="margin-bottom:12px" placeholder="UBT Yard">
 
-    <div class="lbl">Today's truck</div>
-    <input id="truck" class="mono mt" style="margin-bottom:12px" placeholder="Truck #  e.g. T-118">
+<div class="lbl">City</div>
+<input id="startCity" class="mt" style="margin-bottom:12px" placeholder="City">
 
-    <div class="lbl">Start mileage (km)</div>
-    <input id="startKm" class="mono mt" style="margin-bottom:12px" inputmode="numeric" placeholder="Starting odometer">
+<div class="lbl">Today's truck</div>
+<input id="truck" class="mono mt" style="margin-bottom:12px" placeholder="Truck #  e.g. T-118">
 
-    <button class="btn go" data-act="startShift">Start shift</button>
-  </div>
-  <button class="btn dark mt" data-act="go" data-v="setup">Edit profile</button>
-  <p class="note">Data is saved on this phone and works offline. Once we connect the office database,
-  finished shifts also sync automatically.</p>`;
+<div class="lbl">Start mileage (km)</div>
+<input id="startKm" class="mono mt" style="margin-bottom:12px" inputmode="numeric" placeholder="Starting odometer">
+
+<button class="btn go" data-act="startShift">Start shift</button>
+
+<div style="height:24px"></div>
+
+<button class="btn dark" data-act="masterReset"
+  style="color:var(--stop);border:1px solid var(--stop)">
+  Master Reset
+</button>
+`;
 }
 function stopRowHtml(s,i){
   const badge=s.pinned?`<span class="badge" style="background:${s.pinned==="start"?"var(--go)":"var(--stop)"}">${s.pinned==="start"?"START":"END"}</span>`:"";
@@ -635,6 +634,39 @@ if(a==="finishShift"){
   return;
 }
   if(a==="fileShift"){ S.shift=null; persist(); go("home"); return; }
+  if(a==="masterReset"){
+  const ok=confirm(
+    "MASTER RESET\n\n" +
+    "This will permanently delete:\n" +
+    "• Your profile\n" +
+    "• All saved shifts\n" +
+    "• All run sheets\n" +
+    "• All weekly timesheets\n" +
+    "• The current shift\n\n" +
+    "This cannot be undone.\n\n" +
+    "Continue?"
+  );
+
+  if(!ok) return;
+
+  try{
+    localStorage.removeItem("ubt");
+  }catch(e){}
+
+  S={
+    profile:null,
+    past:[],
+    shift:null,
+    view:"setup",
+    editMode:"edit",
+    editIdx:null,
+    draft:null
+  };
+
+  render();
+  toast("All data has been reset");
+  return;
+}
   if(a==="pdfRun"){ makeRunSheet(S.shift); return; }
   if(a==="pdfWeek"){ makeWeekly(); return; }
   if(a==="pdfDay"){ makeRunSheet(S.past[Number(t.dataset.i)]); return; }
