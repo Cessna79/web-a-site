@@ -132,7 +132,17 @@ const store = (() => {
 
 /* ---------- time helpers (times stored as epoch ms) ---------- */
 const pad = n => String(n).padStart(2,"0");
-const fmtT = ms => ms==null ? "" : (d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`)(new Date(ms));
+
+function round15(ms){
+  if(ms==null) return null;
+  return Math.round(ms / 900000) * 900000;
+}
+
+const fmtT = ms => ms==null ? "" : (d=>{
+  const r = new Date(round15(ms));
+  return `${pad(r.getHours())}:${pad(r.getMinutes())}`;
+})(new Date(ms));
+
 const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 function todayStr(d=new Date()){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function diffH(s,f){ if(s==null||f==null) return 0; let ms=f-s; if(ms<0) ms+=864e5; return ms/36e5; }
