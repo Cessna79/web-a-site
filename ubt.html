@@ -2584,6 +2584,55 @@ document.addEventListener("click", e => {
     return;
   }
 
+  /* Temperature keypad */
+if(a === "tempkey") {
+
+  const key = t.dataset.tempkey;
+  const o = activeStop();
+
+  if(!o) return;
+
+  let v = String(o.temp || "");
+
+  if(key === "back") {
+
+    v = v.slice(0, -1);
+
+  } else if(key === "-") {
+
+    if(v.startsWith("-")) {
+      v = v.slice(1);
+    } else if(v) {
+      v = "-" + v;
+    } else {
+      v = "-";
+    }
+
+  } else {
+
+    if(v === "-" && key === "0") {
+      v = "-0";
+    } else if(v === "0") {
+      v = key;
+    } else {
+      v += key;
+    }
+
+  }
+
+  o.temp = v;
+
+  const input = document.getElementById("temp");
+
+  if(input) {
+    input.value = v;
+  }
+
+  persist();
+
+  return;
+}
+
 
   /* Time stamp */
   if(a === "stamp") {
