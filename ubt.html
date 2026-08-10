@@ -146,1017 +146,4523 @@
 </nav>
 <div id="toast" class="toast"></div>
 
+```html
 <script>
 "use strict";
+
+/* =========================================================
+   PDF LIBRARY
+========================================================= */
 const PDFLib = window.PDFLib;
 
-/* ---------- storage (localStorage w/ in-memory fallback) ---------- */
+
+/* =========================================================
+   STORAGE
+========================================================= */
 const store = (() => {
-  let mem = {}, ok = true;
-  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ ok = false; }
+  let mem = {};
+  let ok = true;
+
+  try {
+    localStorage.setItem("__ubt_test", "1");
+    localStorage.removeItem("__ubt_test");
+  } catch(e) {
+    ok = false;
+  }
+
   return {
-    get(k){ try { return ok ? localStorage.getItem(k) : mem[k]; } catch(e){ return mem[k]; } },
-    set(k,v){ try { ok ? localStorage.setItem(k,v) : (mem[k]=v); } catch(e){ mem[k]=v; } }
+    get(k) {
+      try {
+        return ok ? localStorage.getItem(k) : mem[k];
+      } catch(e) {
+        return mem[k];
+      }
+    },
+
+    set(k, v) {
+      try {
+        ok ? localStorage.setItem(k, v) : (mem[k] = v);
+      } catch(e) {
+        mem[k] = v;
+      }
+    }
   };
 })();
 
-/* ---------- time helpers (times stored as epoch ms) ---------- */
-const pad = n => String(n).padStart(2,"0");
 
-/* Round official shift start/end times to nearest 15 minutes */
-function round15(ms){
-  if(ms==null) return null;
+/* =========================================================
+   BASIC HELPERS
+========================================================= */
+const pad = n => String(n).padStart(2, "0");
+
+function round15(ms) {
+  if(ms == null) return null;
 
   const d = new Date(ms);
-  d.setSeconds(0,0);
+  d.setSeconds(0, 0);
 
   const minutes = d.getMinutes();
-  const roundedMinutes = Math.round(minutes / 15) * 15;
+  const rounded = Math.round(minutes / 15) * 15;
 
-  if(roundedMinutes === 60){
+  if(rounded === 60) {
     d.setHours(d.getHours() + 1);
     d.setMinutes(0);
   } else {
-    d.setMinutes(roundedMinutes);
+    d.setMinutes(rounded);
   }
 
   return d.getTime();
 }
 
-/* Display the exact stored clock time.
-   Do NOT round here because customer arrival/departure
-   times must remain actual clock times. */
-const fmtT = ms => ms==null ? "" : (d=>{
+
+/* Exact clock time for customer arrival/departure */
+const fmtT = ms => {
+  if(ms == null) return "";
+
+  const d = new Date(ms);
+
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-})(new Date(ms));
+};
 
-const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-function todayStr(d=new Date()){
+const WD = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+];
+
+
+function todayStr(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 
-/* Calculate hours using the already-rounded official
-   shift startTime and finishTime. */
-function diffH(s,f){
-  if(s==null||f==null) return 0;
 
-  let ms = f-s;
-  if(ms<0) ms += 864e5;
+function diffH(s, f) {
+  if(s == null || f == null) return 0;
 
-  return ms/36e5;
+  let ms = f - s;
+
+  if(ms < 0) ms += 864e5;
+
+  return ms / 36e5;
 }
 
+
 const hDec = h =>
-  h ? (Math.round(h*100)/100).toFixed(2) : "";
+  h ? (Math.round(h * 100) / 100).toFixed(2) : "";
+
 
 const hHM = h => {
   if(!h) return "00:00";
-  const t=Math.round(h*60);
-  return `${pad(Math.floor(t/60))}:${pad(t%60)}`;
+
+  const t = Math.round(h * 60);
+
+  return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
 };
 
-function mondayOf(d){
-  const x=new Date(d);
-  const w=(x.getDay()+6)%7;
-  x.setDate(x.getDate()-w);
-  x.setHours(0,0,0,0);
+
+function mondayOf(d) {
+  const x = new Date(d);
+  const w = (x.getDay() + 6) % 7;
+
+  x.setDate(x.getDate() - w);
+  x.setHours(0, 0, 0, 0);
+
   return x;
 }
 
-function parseDate(s){
-  const p=String(s).split("-").map(Number);
-  return new Date(p[0],(p[1]||1)-1,p[2]||1);
+
+function parseDate(s) {
+  const p = String(s).split("-").map(Number);
+
+  return new Date(
+    p[0],
+    (p[1] || 1) - 1,
+    p[2] || 1
+  );
 }
 
+
+/* HTML escape */
 const esc = s =>
-  (s==null ? "" : String(s)).replace(
+  (s == null ? "" : String(s)).replace(
     /[&<>"]/g,
     c => ({
-      "&":"&amp;",
-      "<":"&lt;",
-      ">":"&gt;",
-      '"':"&quot;"
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;"
     }[c])
   );
 
-/* ---------- state ---------- */
 
-/* ---------- state ---------- */
-let S;
-function loadState(){
-  try{ const raw=store.get("ubt"); if(raw){ const o=JSON.parse(raw);
-    const shift=o.shift||null;
-    if(shift && shift.phase==null) shift.phase="atStop";
-    if(shift && !shift.done && !shift.next) shift.next=blankNext();
-    const view = !o.profile ? "setup" : (shift && !shift.done ? "shift" : "home");
-    return {profile:o.profile||null, past:o.past||[], shift, view, editMode:"edit", editIdx:null, draft:null}; }
-  }catch(e){}
-  return {profile:null, past:[], shift:null, view:"setup", editMode:"edit", editIdx:null, draft:null};
+/* =========================================================
+   TEMPERATURE HELPERS
+========================================================= */
+function tempUnit() {
+  return S.profile?.tempUnit === "F" ? "F" : "C";
 }
-function persist(){
+
+
+function tempLabel() {
+  return tempUnit() === "F"
+    ? "Temperature (°F)"
+    : "Temperature (°C)";
+}
+
+
+function tempSuffix() {
+  return tempUnit() === "F" ? "°F" : "°C";
+}
+
+
+/*
+   We store the value exactly as the driver enters it.
+
+   Examples:
+   -10
+   -5.5
+   2
+   35
+*/
+function cleanTemp(value) {
+  return String(value ?? "")
+    .replace(/[^\d.-]/g, "")
+    .replace(/(?!^)-/g, "")
+    .replace(/^(-?\d*\.\d*).*$/, "$1");
+}
+
+
+/* =========================================================
+   STATE
+========================================================= */
+let S;
+
+
+function blankNext() {
+  return {
+    company: "",
+    city: "",
+    trailer: "",
+    bobtail: false,
+    status: null,
+    fuel: "",
+    temp: "",
+    timeIn: null,
+    timeOut: null,
+    remarks: ""
+  };
+}
+
+
+function loadState() {
+  try {
+    const raw = store.get("ubt");
+
+    if(raw) {
+      const o = JSON.parse(raw);
+
+      const shift = o.shift || null;
+
+      if(shift && shift.phase == null) {
+        shift.phase = "atStop";
+      }
+
+      if(shift && !shift.done && !shift.next) {
+        shift.next = blankNext();
+      }
+
+      /*
+         Backward compatibility:
+         profiles created before temperature-unit support
+         automatically use Celsius.
+      */
+      if(o.profile && !o.profile.tempUnit) {
+        o.profile.tempUnit = "C";
+      }
+
+      const view =
+        !o.profile
+          ? "setup"
+          : (shift && !shift.done ? "shift" : "home");
+
+      return {
+        profile: o.profile || null,
+        past: o.past || [],
+        shift,
+        view,
+        editMode: "edit",
+        editIdx: null,
+        draft: null
+      };
+    }
+  } catch(e) {
+    console.error("State load error:", e);
+  }
+
+  return {
+    profile: null,
+    past: [],
+    shift: null,
+    view: "setup",
+    editMode: "edit",
+    editIdx: null,
+    draft: null
+  };
+}
+
+
+function persist() {
   const status = document.getElementById("saveStatus");
 
-  if(status){
+  if(status) {
     status.textContent = "Saving…";
     status.classList.add("saving");
   }
 
-  store.set("ubt", JSON.stringify({
-    profile:S.profile,
-    past:S.past,
-    shift:S.shift
-  }));
+  store.set(
+    "ubt",
+    JSON.stringify({
+      profile: S.profile,
+      past: S.past,
+      shift: S.shift
+    })
+  );
 
-  if(status){
+  if(status) {
     status.textContent = "✓ Saved";
     status.classList.remove("saving");
   }
 }
-function upsertPast(sh){ const c=JSON.parse(JSON.stringify(sh)); const i=S.past.findIndex(x=>x.id===sh.id); if(i>=0) S.past[i]=c; else S.past.push(c); }
+
+
+function upsertPast(sh) {
+  const c = JSON.parse(JSON.stringify(sh));
+
+  const i = S.past.findIndex(x => x.id === sh.id);
+
+  if(i >= 0) {
+    S.past[i] = c;
+  } else {
+    S.past.push(c);
+  }
+}
+
+
 S = loadState();
 
-/* ---------- toast ---------- */
+
+/* =========================================================
+   TOAST
+========================================================= */
 let toastTimer;
-function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
 
-/* ---------- navigation ---------- */
-function go(view){ S.view=view; persist(); render(); }
-const FUEL=["Empty","Qtr","Half","Full"];
+function toast(msg) {
+  const t = document.getElementById("toast");
 
-/* ---------- render ---------- */
-const app=document.getElementById("app");
-function render(){
-  const scr=document.getElementById("scr"), navL=document.getElementById("navL"), navR=document.getElementById("navR");
-  navL.innerHTML=""; navR.innerHTML="";
-  const editTitle = S.editMode==="next" ? "Next stop"
-    : (S.draft&&S.draft.pinned==="start" ? "Starting point"
-    : (S.draft&&S.draft.pinned==="end" ? "End yard" : "Edit stop"));
-  const titles={setup:"Set up profile",home:"Shift",shift:"On duty",editStop:editTitle,
-    final:"End of shift",sheet:"Daily run sheet",week:"Weekly timesheet",sheets:"Saved sheets"};
-  scr.textContent=titles[S.view]||"";
-  const topLevel=["home","shift","summary","week","sheets"];
-  if(["editStop","final","sheet"].includes(S.view)){
-    const back={editStop:"shift",final:"shift",sheet:"shift"}[S.view];
-    navL.innerHTML=`<button class="icon" data-act="go" data-v="${back}" aria-label="Back">‹</button>`;
+  if(!t) return;
+
+  t.textContent = msg;
+  t.classList.add("show");
+
+  clearTimeout(toastTimer);
+
+  toastTimer = setTimeout(
+    () => t.classList.remove("show"),
+    2200
+  );
+}
+
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+function go(view) {
+  S.view = view;
+  persist();
+  render();
+}
+
+
+const FUEL = [
+  "Empty",
+  "Qtr",
+  "Half",
+  "Full"
+];
+
+
+/* =========================================================
+   DOM
+========================================================= */
+const app = document.getElementById("app");
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+function render() {
+
+  const scr = document.getElementById("scr");
+  const navL = document.getElementById("navL");
+  const navR = document.getElementById("navR");
+
+  if(!scr || !navL || !navR || !app) {
+    console.error("Required application elements are missing.");
+    return;
+  }
+
+  navL.innerHTML = "";
+  navR.innerHTML =
+    '<span id="saveStatus" class="save-status">✓ Saved</span>';
+
+  const editTitle =
+    S.editMode === "next"
+      ? "Next stop"
+      : (
+          S.draft && S.draft.pinned === "start"
+            ? "Starting point"
+            : (
+                S.draft && S.draft.pinned === "end"
+                  ? "End yard"
+                  : "Edit stop"
+              )
+        );
+
+  const titles = {
+    setup: "Set up profile",
+    home: "Shift",
+    shift: "On duty",
+    summary: "Summary",
+    editStop: editTitle,
+    final: "End of shift",
+    sheet: "Daily run sheet",
+    week: "Weekly timesheet",
+    sheets: "Saved sheets"
+  };
+
+  scr.textContent = titles[S.view] || "";
+
+  const topLevel = [
+    "home",
+    "shift",
+    "summary",
+    "week",
+    "sheets"
+  ];
+
+  if(["editStop", "final", "sheet"].includes(S.view)) {
+
+    const back = {
+      editStop: "shift",
+      final: "shift",
+      sheet: "shift"
+    }[S.view];
+
+    navL.innerHTML =
+      `<button class="icon"
+        data-act="go"
+        data-v="${back}"
+        aria-label="Back">‹</button>`;
+
   } else {
-    navL.innerHTML=`<div style="width:8px;height:8px;border-radius:8px;background:var(--amber)"></div>`;
-  }
-app.innerHTML=({
-  setup:vSetup,
-  home:vHome,
-  shift:vShift,
-  summary:vSummary,
-  editStop:vEditStop,
-  final:vFinal,
-  sheet:vSheet,
-  week:vWeek,
-  sheets:vSheets
-}[S.view]||(()=>""))();
-  
-  // bottom tab bar
-  const tb=document.getElementById("tabbar");
-  const showTabs=topLevel.includes(S.view);
-  document.body.classList.toggle("has-tabs", showTabs);
-  tb.style.display=showTabs?"flex":"none";
-  if(showTabs){
-   tb.querySelector('[data-tab="shift"]').classList.toggle("active", S.view==="shift"||S.view==="home");
-   tb.querySelector('[data-tab="summary"]').classList.toggle("active", S.view==="summary");
-   tb.querySelector('[data-tab="week"]').classList.toggle("active", S.view==="week");
-   tb.querySelector('[data-tab="sheets"]').classList.toggle("active", S.view==="sheets");
-  }
-}
 
-function vSetup(){
-return `
-
-<p class="muted" style="margin-top:0">
-  Enter this once. Your name and corporation print on every sheet.
-  Your home base is the yard you usually start from — you can change it for any day at start.
-  The truck changes daily, so you enter that when you start a shift.
-</p>
-
-<div class="field">
-  <div class="lbl">Driver name</div>
-  <input id="pn" placeholder="e.g. M. Singh"
-    value="${esc(S.profile?.name||"")}">
-</div>
-
-<div class="field">
-  <div class="lbl">Corporation</div>
-  <input id="pc" placeholder="e.g. 12345 Ontario Inc."
-    value="${esc(S.profile?.corp||"")}">
-</div>
-
-<div class="field">
-  <div class="lbl">Home base (usual start yard)</div>
-  <input id="ph" placeholder="e.g. UBT Yard, Brampton"
-    value="${esc(S.profile?.homeBase||"")}">
-</div>
-
-<div class="field">
-  <div class="lbl">Temperature unit</div>
-  <div class="segs">
-    <div class="seg ${(S.profile?.tempUnit||"C")==="C"?"on":""}"
-      style="${(S.profile?.tempUnit||"C")==="C"?"background:var(--go)":""}"
-      data-act="tempUnit" data-unit="C">
-      °C
-    </div>
-    <div class="seg ${(S.profile?.tempUnit||"C")==="F"?"on":""}"
-      style="${(S.profile?.tempUnit||"C")==="F"?"background:var(--go)":""}"
-      data-act="tempUnit" data-unit="F">
-      °F
-    </div>
-  </div>
-</div>
-
-<button class="btn go" data-act="saveProfile">Save profile</button>`;
-}
-
-function vHome(){
-return `
-
-<div class="lbl">Starting company / yard</div>
-<input id="startCo" class="mt" style="margin-bottom:12px" placeholder="UBT Yard">
-
-<div class="lbl">City</div>
-<input id="startCity" class="mt" style="margin-bottom:12px" placeholder="City">
-
-<div class="lbl">Today's truck</div>
-<input id="truck" class="mono mt"
-       style="margin-bottom:12px"
-       inputmode="numeric"
-       pattern="[0-9]*"
-       placeholder="Truck #">
-
-<div class="lbl">Start mileage (km)</div>
-<input id="startKm" class="mono mt" style="margin-bottom:12px" inputmode="numeric" placeholder="Starting odometer">
-
-<button class="btn go" data-act="startShift">Start shift</button>
-
-<div style="height:24px"></div>
-
-<button class="btn dark" data-act="masterReset"
-  style="color:var(--stop);border:1px solid var(--stop)">
-  Master Reset
-</button>
-`;
-}
-function stopRowHtml(s,i){
-  const badge=s.pinned?`<span class="badge" style="background:${s.pinned==="start"?"var(--go)":"var(--stop)"}">${s.pinned==="start"?"START":"END"}</span>`:"";
-  return `<button class="stoprow" data-act="editStop" data-i="${i}">
-    <div style="flex:1">
-      <div style="font-weight:600">${badge}${esc(s.company)||"—"}${s.city?` · <span style="color:var(--mid);font-weight:400">${esc(s.city)}</span>`:""}</div>
-      <div class="sub mono">${s.bobtail?"BOBTAIL":(esc(s.trailer)||"no trailer")} · ${s.status==="load"?"LOADED":s.status==="empty"?"EMPTY":"—"}${s.status==="load"&&s.temp?` · ${esc(s.temp)}°`:""}</div>
-    </div>
-    <div style="text-align:right" class="mono">
-      <div style="color:var(--go)">${fmtT(s.timeIn)||"--:--"}</div>
-      <div style="color:var(--stop)">${fmtT(s.timeOut)||"--:--"}</div>
-    </div>
-  </button>`;
-}
-function stopFieldsHtml(d){
-  const fuel=FUEL.map(f=>`<div class="seg ${d.fuel===f?"on":""}" style="${d.fuel===f?"background:var(--go)":""}" data-act="fuel" data-f="${f}">${f}</div>`).join("");
-  return `
-  <div class="field mt"><div class="lbl">Trailer</div>
-    <div class="segs">
-      <input id="trailer" style="flex:1;${d.bobtail?"opacity:.5":""}" placeholder="Trailer #" value="${d.bobtail?"Bobtail":esc(d.trailer)}" ${d.bobtail?"disabled":""}>
-      <div class="seg ${d.bobtail?"on":""}" style="max-width:110px;${d.bobtail?"background:var(--amber)":""}" data-act="bobtail">Bobtail</div>
-    </div>
-  </div>
-  <div class="field"><div class="lbl">Load status</div>
-    <div class="segs">
-      <div class="seg ${d.status==="load"?"on":""}" style="${d.status==="load"?"background:var(--blue)":""}" data-act="status" data-s="load">Loaded</div>
-      <div class="seg ${d.status==="empty"?"on":""}" style="${d.status==="empty"?"background:var(--mid)":""}" data-act="status" data-s="empty">Empty</div>
-    </div>
-  </div>
-  ${d.status==="load"?`
-  <div class="field"><div class="lbl">Fuel level</div><div class="segs">${fuel}</div></div>
-  <div class="field">
-  <div class="lbl">Temperature (${S.profile?.tempUnit==="F" ? "°F" : "°C"})</div>
-  <input
-    id="temp"
-    type="text"
-    inputmode="decimal"
-    placeholder="e.g. -10"
-    value="${esc(d.temp||"")}"
-  >
-</div>
-  <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>`;
-}
-function vShift(){
-const sh=S.shift, el=hHM(diffH(sh.startTime,Date.now()));
-
-const current = sh.stops && sh.stops.length
-  ? sh.stops[sh.stops.length-1]
-  : null;
-  const cur=sh.stops[sh.stops.length-1];
-  const list=sh.stops.map((s,i)=>stopRowHtml(s,i)).join("");
-  const head=`
-  <div class="card" style="display:flex;gap:16px">
-    <div class="stat"><div class="lbl">Truck</div><div class="n">${esc(sh.truck)}</div></div>
-    <div class="stat"><div class="lbl">Start</div><div class="n mono">${fmtT(sh.startTime)}</div></div>
-    <div class="stat"><div class="lbl">Elapsed</div><div class="n mono" style="color:var(--amber)" id="elapsed">${el}</div></div>
-  </div>`;
-  const listBlock=`<div class="lbl" style="margin:22px 2px 10px">Stops so far (${sh.stops.length})</div>${list}`;
-
-  if(sh.phase==="driving" && sh.next){
-    const n=sh.next, yard=n.pinned==="end";
-    const dest = yard
-      ? `<div class="card mt" style="border-color:var(--blue)"><div class="lbl">Driving to</div>
-          <div style="font-weight:600;font-size:17px;margin-top:6px"><span class="badge" style="background:var(--stop)">YARD</span> ${esc(n.company)||"the yard"}</div></div>`
-      : `<div class="card mt" style="border-color:var(--blue)"><div class="lbl">Driving to</div>
-          <div class="field mt" style="margin-bottom:8px"><input id="nextCompany" placeholder="Next stop company" value="${esc(n.company)}"></div>
-          <div class="field" style="margin-bottom:0"><input id="nextCity" placeholder="City" value="${esc(n.city)}"></div></div>`;
-    return `${head}
-      <div class="muted mt" style="margin-left:2px">On the road — press <b style="color:var(--hi)">Arrive</b> when you get there.${yard?"":" You can still fix the destination above."}</div>
-      ${dest}
-      <button class="btn go mt" data-act="arrive">Arrive</button>
-      ${listBlock}`;
-  }
-
-  // phase atStop
-  if(cur.pinned==="end"){
-    return `${head}
-      <div class="muted mt" style="margin-left:2px">Back at the yard — <b style="color:var(--hi)">${esc(cur.company)||"yard"}</b>. Wrap up, then end the shift.</div>
-      ${stopFieldsHtml(cur)}
-      <button class="btn amber mt" data-act="endShift">End shift</button>
-      ${listBlock}`;
-  }
-  return `${head}
-    <div class="muted mt" style="margin-left:2px">You're at <b style="color:var(--hi)">${esc(cur.company)||"—"}</b>${cur.city?" · "+esc(cur.city):""}. Fill this stop, set your next stop, then Depart.</div>
-    ${stopFieldsHtml(cur)}
-    <div class="lbl" style="margin:20px 2px 8px">Next stop</div>
-    <div class="field"><input id="nextCompany" placeholder="Next stop company" value="${esc(sh.next?sh.next.company:"")}"></div>
-    <div class="field"><input id="nextCity" placeholder="City" value="${esc(sh.next?sh.next.city:"")}"></div>
-    <button class="btn stopb mt" data-act="depart">Depart</button>
-    <button class="btn dark mt" data-act="returnToYard">Return to yard &amp; end</button>
-    ${listBlock}`;
-}
-
-function vSummary(){
-  const sh=S.shift;
-
-  if(!sh){
-    return `
-      <div class="card">
-        <div class="lbl">Today's summary</div>
-        <div class="muted mt">No active shift today.</div>
+    navL.innerHTML =
+      `<div style="
+        width:8px;
+        height:8px;
+        border-radius:8px;
+        background:var(--amber)">
       </div>`;
   }
 
-  const total=diffH(sh.startTime,sh.finishTime||Date.now());
-  const stops=sh.stops||[];
 
-  const list=stops.map((s,i)=>stopRowHtml(s,i)).join("");
+  const renderer = {
+    setup: vSetup,
+    home: vHome,
+    shift: vShift,
+    summary: vSummary,
+    editStop: vEditStop,
+    final: vFinal,
+    sheet: vSheet,
+    week: vWeek,
+    sheets: vSheets
+  }[S.view];
+
+
+  try {
+    app.innerHTML = renderer ? renderer() : "";
+  } catch(e) {
+    console.error("Render error:", e);
+
+    app.innerHTML = `
+      <div class="card">
+        <div class="lbl">Application error</div>
+        <div class="muted">
+          Something went wrong while loading this screen.
+        </div>
+      </div>
+    `;
+  }
+
+
+  const tb = document.getElementById("tabbar");
+
+  if(!tb) return;
+
+  const showTabs = topLevel.includes(S.view);
+
+  document.body.classList.toggle(
+    "has-tabs",
+    showTabs
+  );
+
+  tb.style.display = showTabs ? "flex" : "none";
+
+  if(showTabs) {
+
+    tb.querySelector('[data-tab="shift"]')
+      ?.classList.toggle(
+        "active",
+        S.view === "shift" ||
+        S.view === "home"
+      );
+
+    tb.querySelector('[data-tab="summary"]')
+      ?.classList.toggle(
+        "active",
+        S.view === "summary"
+      );
+
+    tb.querySelector('[data-tab="week"]')
+      ?.classList.toggle(
+        "active",
+        S.view === "week"
+      );
+
+    tb.querySelector('[data-tab="sheets"]')
+      ?.classList.toggle(
+        "active",
+        S.view === "sheets"
+      );
+  }
+}
+
+
+/* =========================================================
+   SETUP / PROFILE
+========================================================= */
+function vSetup() {
+
+  const unit =
+    S.profile?.tempUnit === "F"
+      ? "F"
+      : "C";
+
+  return `
+    <p class="muted" style="margin-top:0">
+      Enter this once. Your name and corporation print on every sheet.
+      Your home base is the yard you usually start from — you can change
+      it for any day at start. The truck changes daily, so you enter that
+      when you start a shift.
+    </p>
+
+    <div class="field">
+      <div class="lbl">Driver name</div>
+      <input
+        id="pn"
+        placeholder="e.g. M. Singh"
+        value="${esc(S.profile?.name || "")}">
+    </div>
+
+    <div class="field">
+      <div class="lbl">Corporation</div>
+      <input
+        id="pc"
+        placeholder="e.g. 12345 Ontario Inc."
+        value="${esc(S.profile?.corp || "")}">
+    </div>
+
+    <div class="field">
+      <div class="lbl">Home base (usual start yard)</div>
+      <input
+        id="ph"
+        placeholder="e.g. UBT Yard, Brampton"
+        value="${esc(S.profile?.homeBase || "")}">
+    </div>
+
+    <div class="field">
+      <div class="lbl">Temperature unit</div>
+
+      <div class="segs">
+
+        <div
+          class="seg ${unit === "C" ? "on" : ""}"
+          style="${unit === "C" ? "background:var(--go)" : ""}"
+          data-act="tempUnit"
+          data-unit="C">
+          °C
+        </div>
+
+        <div
+          class="seg ${unit === "F" ? "on" : ""}"
+          style="${unit === "F" ? "background:var(--go)" : ""}"
+          data-act="tempUnit"
+          data-unit="F">
+          °F
+        </div>
+
+      </div>
+    </div>
+
+    <button class="btn go" data-act="saveProfile">
+      Save profile
+    </button>
+  `;
+}
+
+
+/* =========================================================
+   HOME
+========================================================= */
+function vHome() {
 
   return `
     <div class="card">
-      <div class="lbl">Today's summary</div>
+
+      <div class="lbl">Today's shift</div>
+
+      <div class="muted">
+        Start a new shift when you're ready.
+      </div>
+
+    </div>
+
+    <button
+      class="btn go mt"
+      data-act="startShiftHome">
+      Start shift
+    </button>
+
+    <button
+      class="btn dark mt"
+      data-act="masterReset">
+      Master Reset
+    </button>
+  `;
+}
+
+
+/* =========================================================
+   START SHIFT SCREEN
+========================================================= */
+function startShiftForm() {
+
+  return `
+    <div class="card">
+
+      <div class="field">
+        <div class="lbl">Truck #</div>
+        <input
+          id="truck"
+          placeholder="e.g. 123"
+          autocomplete="off">
+      </div>
+
+      <div class="field">
+        <div class="lbl">Starting mileage</div>
+        <input
+          id="startKm"
+          type="text"
+          inputmode="decimal"
+          placeholder="e.g. 245678">
+      </div>
+
+      <div class="field">
+        <div class="lbl">Starting yard / company</div>
+        <input
+          id="startCo"
+          placeholder="${esc(S.profile?.homeBase || "Yard")}">
+      </div>
+
+      <div class="field">
+        <div class="lbl">City</div>
+        <input
+          id="startCity"
+          placeholder="City">
+      </div>
+
+    </div>
+
+    <button
+      class="btn go mt"
+      data-act="startShift">
+      Start shift
+    </button>
+  `;
+}
+
+
+/* =========================================================
+   STOP ROW
+========================================================= */
+function stopRowHtml(s, i) {
+
+  const badge = s.pinned
+    ? `<span
+        class="badge"
+        style="background:${
+          s.pinned === "start"
+            ? "var(--go)"
+            : "var(--stop)"
+        }">
+        ${
+          s.pinned === "start"
+            ? "START"
+            : "END"
+        }
+      </span>`
+    : "";
+
+  return `
+    <button
+      class="stoprow"
+      data-act="editStop"
+      data-i="${i}">
+
+      <div style="flex:1">
+
+        <div style="font-weight:600">
+          ${badge}
+          ${esc(s.company) || "—"}
+          ${
+            s.city
+              ? ` · <span style="
+                    color:var(--mid);
+                    font-weight:400">
+                    ${esc(s.city)}
+                  </span>`
+              : ""
+          }
+        </div>
+
+        <div class="sub">
+          ${
+            s.bobtail
+              ? "BOBTAIL"
+              : (esc(s.trailer) || "no trailer")
+          }
+          ·
+          ${
+            s.status === "load"
+              ? "LOADED"
+              : s.status === "empty"
+                ? "EMPTY"
+                : "—"
+          }
+          ${
+            s.status === "load" && s.temp
+              ? ` · ${esc(s.temp)}${tempSuffix()}`
+              : ""
+          }
+        </div>
+
+      </div>
+
+      <div
+        class="mono"
+        style="
+          font-size:12px;
+          text-align:right;
+          white-space:nowrap">
+
+        ${fmtT(s.timeIn) || "--:--"}
+
+        <br>
+
+        ${fmtT(s.timeOut) || "--:--"}
+
+      </div>
+
+    </button>
+  `;
+}
+
+
+/* =========================================================
+   STOP FIELDS
+========================================================= */
+function stopFieldsHtml(d) {
+
+  const fuel = FUEL.map(f =>
+    `<div
+      class="seg ${d.fuel === f ? "on" : ""}"
+      style="${
+        d.fuel === f
+          ? "background:var(--go)"
+          : ""
+      }"
+      data-act="fuel"
+      data-f="${f}">
+      ${f}
+    </div>`
+  ).join("");
+
+
+  return `
+    <div class="field">
+
+      <div class="lbl">Trailer</div>
+
+      <input
+        id="trailer"
+        placeholder="Trailer #"
+        value="${esc(d.trailer || "")}"
+        ${d.bobtail ? "disabled" : ""}>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="lbl">Bobtail</div>
+
+      <div class="segs">
+
+        <div
+          class="seg ${d.bobtail ? "on" : ""}"
+          style="${
+            d.bobtail
+              ? "background:var(--amber)"
+              : ""
+          }"
+          data-act="bobtail">
+          Bobtail
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="lbl">Load status</div>
+
+      <div class="segs">
+
+        <div
+          class="seg ${d.status === "load" ? "on" : ""}"
+          style="${
+            d.status === "load"
+              ? "background:var(--blue)"
+              : ""
+          }"
+          data-act="status"
+          data-s="load">
+          Loaded
+        </div>
+
+        <div
+          class="seg ${d.status === "empty" ? "on" : ""}"
+          style="${
+            d.status === "empty"
+              ? "background:var(--mid)"
+              : ""
+          }"
+          data-act="status"
+          data-s="empty">
+          Empty
+        </div>
+
+      </div>
+
+    </div>
+
+
+    ${
+      d.status === "load"
+        ? `
+          <div class="field">
+
+            <div class="lbl">Fuel level</div>
+
+            <div class="segs">
+              ${fuel}
+            </div>
+
+          </div>
+
+
+          <div class="field">
+
+            <div class="lbl">
+              ${tempLabel()}
+            </div>
+
+            <input
+              id="temp"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="${
+                tempUnit() === "F"
+                  ? "e.g. 14"
+                  : "e.g. -10"
+              }"
+              value="${esc(d.temp || "")}">
+
+          </div>
+        `
+        : ""
+    }
+
+
+    <div class="field">
+
+      <div class="lbl">Remarks</div>
+
+      <textarea
+        id="remarks"
+        placeholder="What you did here, or reason for delay…"
+      >${esc(d.remarks || "")}</textarea>
+
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   SHIFT SCREEN
+========================================================= */
+function vShift() {
+
+  const sh = S.shift;
+
+  if(!sh) {
+    return `
+      <div class="card muted">
+        No active shift.
+      </div>
+    `;
+  }
+
+  const stops = sh.stops || [];
+
+  const cur =
+    stops.length
+      ? stops[stops.length - 1]
+      : null;
+
+  const listBlock = `
+    <div
+      class="lbl"
+      style="margin:22px 2px 10px">
+      Stops
+    </div>
+
+    ${
+      stops.length
+        ? stops.map((s, i) =>
+            stopRowHtml(s, i)
+          ).join("")
+        : `
+          <div class="card muted">
+            No stops recorded.
+          </div>
+        `
+    }
+  `;
+
+
+  if(sh.phase === "driving" && sh.next) {
+
+    const n = sh.next;
+    const yard = n.pinned === "end";
+
+    const dest = yard
+      ? `
+        <div
+          class="card mt"
+          style="border-color:var(--blue)">
+
+          <div class="lbl">Driving to</div>
+
+          <div style="
+            font-weight:600;
+            font-size:17px;
+            margin-top:6px">
+
+            <span
+              class="badge"
+              style="background:var(--stop)">
+              YARD
+            </span>
+
+            ${esc(n.company) || "the yard"}
+
+          </div>
+
+        </div>
+      `
+      : `
+        <div
+          class="card mt"
+          style="border-color:var(--blue)">
+
+          <div class="lbl">
+            Driving to
+          </div>
+
+          <div
+            class="field mt"
+            style="margin-bottom:8px">
+
+            <input
+              id="nextCompany"
+              placeholder="Next stop company"
+              value="${esc(n.company || "")}">
+
+          </div>
+
+          <div
+            class="field"
+            style="margin-bottom:0">
+
+            <input
+              id="nextCity"
+              placeholder="City"
+              value="${esc(n.city || "")}">
+
+          </div>
+
+        </div>
+      `;
+
+
+    return `
+      <div class="card">
+
+        <div class="lbl">
+          Shift elapsed
+        </div>
+
+        <div
+          id="elapsed"
+          class="mono"
+          style="
+            font-size:28px;
+            font-weight:700;
+            color:var(--amber)">
+          ${hHM(diffH(sh.startTime, Date.now()))}
+        </div>
+
+      </div>
+
+      <div
+        class="muted mt"
+        style="margin-left:2px">
+
+        On the road — press
+        <b style="color:var(--hi)">
+          Arrive
+        </b>
+        when you get there.
+
+      </div>
+
+      ${dest}
+
+      <button
+        class="btn go mt"
+        data-act="arrive">
+        Arrive
+      </button>
+
+      ${listBlock}
+    `;
+  }
+
+
+  if(!cur) {
+    return `
+      <div class="card muted">
+        No current stop.
+      </div>
+    `;
+  }
+
+
+  if(cur.pinned === "end") {
+
+    return `
+      <div class="card">
+
+        <div class="lbl">
+          Shift elapsed
+        </div>
+
+        <div
+          id="elapsed"
+          class="mono"
+          style="
+            font-size:28px;
+            font-weight:700;
+            color:var(--amber)">
+          ${hHM(diffH(sh.startTime, Date.now()))}
+        </div>
+
+      </div>
+
+      <div
+        class="muted mt"
+        style="margin-left:2px">
+
+        Back at the yard —
+        <b style="color:var(--hi)">
+          ${esc(cur.company) || "yard"}
+        </b>.
+
+        Wrap up, then end the shift.
+
+      </div>
+
+      ${stopFieldsHtml(cur)}
+
+      <button
+        class="btn amber mt"
+        data-act="endShift">
+        End shift
+      </button>
+
+      ${listBlock}
+    `;
+  }
+
+
+  return `
+    <div class="card">
+
+      <div class="lbl">
+        Shift elapsed
+      </div>
+
+      <div
+        id="elapsed"
+        class="mono"
+        style="
+          font-size:28px;
+          font-weight:700;
+          color:var(--amber)">
+        ${hHM(diffH(sh.startTime, Date.now()))}
+      </div>
+
+    </div>
+
+
+    <div
+      class="muted mt"
+      style="margin-left:2px">
+
+      You're at
+      <b style="color:var(--hi)">
+        ${esc(cur.company) || "—"}
+      </b>
+
+      ${
+        cur.city
+          ? " · " + esc(cur.city)
+          : ""
+      }.
+
+      Fill this stop, set your next stop,
+      then Depart.
+
+    </div>
+
+
+    ${stopFieldsHtml(cur)}
+
+
+    <div
+      class="lbl"
+      style="margin:20px 2px 8px">
+      Next stop
+    </div>
+
+    <div class="field">
+
+      <input
+        id="nextCompany"
+        placeholder="Next stop company"
+        value="${esc(sh.next?.company || "")}">
+
+    </div>
+
+    <div class="field">
+
+      <input
+        id="nextCity"
+        placeholder="City"
+        value="${esc(sh.next?.city || "")}">
+
+    </div>
+
+
+    <button
+      class="btn stopb mt"
+      data-act="depart">
+      Depart
+    </button>
+
+
+    <button
+      class="btn dark mt"
+      data-act="returnToYard">
+      Return to yard &amp; end
+    </button>
+
+
+    ${listBlock}
+  `;
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+function vSummary() {
+
+  const sh = S.shift;
+
+  if(!sh) {
+    return `
+      <div class="card">
+
+        <div class="lbl">
+          Today's summary
+        </div>
+
+        <div class="muted mt">
+          No active shift today.
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  const total =
+    diffH(
+      sh.startTime,
+      sh.finishTime || Date.now()
+    );
+
+  const stops = sh.stops || [];
+
+
+  return `
+    <div class="card">
+
+      <div class="lbl">
+        Today's summary
+      </div>
 
       <div class="row">
         <span class="k">Truck</span>
-        <span class="v">${esc(sh.truck)||"—"}</span>
+        <span class="v">
+          ${esc(sh.truck) || "—"}
+        </span>
       </div>
 
       <div class="row">
         <span class="k">Start</span>
-        <span class="v mono">${fmtT(sh.startTime)||"--:--"}</span>
+        <span class="v mono">
+          ${fmtT(sh.startTime) || "--:--"}
+        </span>
       </div>
 
       <div class="row">
         <span class="k">Finish</span>
-        <span class="v mono">${sh.finishTime?fmtT(sh.finishTime):"--:--"}</span>
+        <span class="v mono">
+          ${
+            sh.finishTime
+              ? fmtT(sh.finishTime)
+              : "--:--"
+          }
+        </span>
       </div>
 
       <div class="row">
         <span class="k">Hours</span>
-        <span class="v mono">${hDec(total)||"0.00"} h</span>
+        <span class="v mono">
+          ${hDec(total) || "0.00"} h
+        </span>
       </div>
 
       <div class="row">
         <span class="k">Stops</span>
-        <span class="v">${stops.length}</span>
+        <span class="v">
+          ${stops.length}
+        </span>
       </div>
+
     </div>
 
-    <div class="lbl" style="margin:20px 2px 8px">
+
+    <div
+      class="lbl"
+      style="margin:20px 2px 8px">
       Today's stops
     </div>
 
-    ${list || `
-      <div class="card muted">
-        No stops recorded yet.
-      </div>
-    `}
+    ${
+      stops.length
+        ? stops.map((s, i) =>
+            stopRowHtml(s, i)
+          ).join("")
+        : `
+          <div class="card muted">
+            No stops recorded yet.
+          </div>
+        `
+    }
   `;
-}  
-function vEditStop(){
-  const d=S.draft;
-  const fuel=FUEL.map(f=>`<div class="seg ${d.fuel===f?"on":""}" style="${d.fuel===f?"background:var(--go)":""}" data-act="fuel" data-f="${f}">${f}</div>`).join("");
+}
+
+
+/* =========================================================
+   EDIT STOP
+========================================================= */
+function vEditStop() {
+
+  const d = S.draft;
+
+  if(!d) {
+    return `
+      <div class="card muted">
+        No stop selected.
+      </div>
+    `;
+  }
+
+
   return `
-  <div class="field"><div class="lbl">Trailer</div>
-    <div class="segs">
-      <input id="trailer" style="flex:1;${d.bobtail?"opacity:.5":""}" placeholder="Trailer #" value="${d.bobtail?"Bobtail":esc(d.trailer)}" ${d.bobtail?"disabled":""}>
-      <div class="seg ${d.bobtail?"on":""}" style="max-width:110px;${d.bobtail?"background:var(--amber)":""}" data-act="bobtail">Bobtail</div>
+    <div class="card">
+
+      <div class="field">
+
+        <div class="lbl">
+          Company
+        </div>
+
+        <input
+          id="company"
+          value="${esc(d.company || "")}"
+          placeholder="Company">
+
+      </div>
+
+
+      <div class="field">
+
+        <div class="lbl">
+          City
+        </div>
+
+        <input
+          id="city"
+          value="${esc(d.city || "")}"
+          placeholder="City">
+
+      </div>
+
+
+      ${stopFieldsHtml(d)}
+
+
+      <div class="field">
+
+        <div class="lbl">
+          Time
+        </div>
+
+        <div class="segs">
+
+          <button
+            class="stamp"
+            data-act="stamp"
+            data-w="in">
+
+            <small>Time in</small>
+
+            <b>
+              ${fmtT(d.timeIn) || "--:--"}
+            </b>
+
+          </button>
+
+
+          <button
+            class="stamp"
+            data-act="stamp"
+            data-w="out">
+
+            <small>Time out</small>
+
+            <b>
+              ${fmtT(d.timeOut) || "--:--"}
+            </b>
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <button
+        class="btn go mt"
+        data-act="saveStop">
+        Save stop
+      </button>
+
     </div>
-  </div>
-  <div class="field"><div class="lbl">Load status</div>
-    <div class="segs">
-      <div class="seg ${d.status==="load"?"on":""}" style="${d.status==="load"?"background:var(--blue)":""}" data-act="status" data-s="load">Loaded</div>
-      <div class="seg ${d.status==="empty"?"on":""}" style="${d.status==="empty"?"background:var(--mid)":""}" data-act="status" data-s="empty">Empty</div>
-    </div>
-  </div>
-  ${d.status==="load"?`
-  <div class="field"><div class="lbl">Fuel level</div><div class="segs">${fuel}</div></div>
-  <div class="field"><div class="lbl">Temperature (°C)</div><input id="temp" inputmode="numeric" placeholder="e.g. -18" value="${esc(d.temp)}"></div>`:""}
-  <div class="field"><div class="lbl">Company</div><input id="company" placeholder="Pickup / delivery name" value="${esc(d.company)}"></div>
-  <div class="field"><div class="lbl">City</div><input id="city" placeholder="City" value="${esc(d.city)}"></div>
-  ${S.editMode==="edit"?`<div class="field"><div class="lbl">Times (military)</div>
-    <div class="segs">
-      <div class="stamp" style="${d.timeIn?"border-color:var(--go)":""}" data-act="stamp" data-w="in">
-        <small>Arrive</small><b style="color:${d.timeIn?"var(--go)":"var(--dim)"}">${fmtT(d.timeIn)||"--:--"}</b></div>
-      <div class="stamp" style="${d.timeOut?"border-color:var(--stop)":""}" data-act="stamp" data-w="out">
-        <small>Depart</small><b style="color:${d.timeOut?"var(--stop)":"var(--dim)"}">${fmtT(d.timeOut)||"--:--"}</b></div>
-    </div>
-  </div>`:`<div class="muted" style="margin:0 2px 14px">Arrive and depart times are stamped automatically when you press Arrive and Depart.</div>`}
-  <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>
-  <button class="btn go" data-act="saveStop">${S.editMode==="next"?"Save next stop":"Save"}</button>`;
+  `;
 }
-function vFinal(){
-const end=S.shift.stops[S.shift.stops.length-1];
-const startKm=String(S.shift.startKm || "");
 
-return `
 
-  <p class="muted" style="margin-top:0">
-    Enter the final odometer reading to finish. Ending at
-    <b style="color:var(--hi)">${esc(end.company)||"the yard"}</b> — the app will
-    calculate your total hours and daily kilometres.
-  </p>
+/* =========================================================
+   FINAL SHIFT SCREEN
+========================================================= */
+function vFinal() {
 
-  <div class="card">
-    <div class="lbl">Start mileage</div>
-    <div class="mono" style="font-size:22px;font-weight:700;margin-top:6px">
-      ${esc(startKm)} km
-    </div>
-  </div>
+  const sh = S.shift;
 
-  <div class="field mt">
-    <div class="lbl">Finish mileage (km)</div>
-    <input id="fkm" class="mono" inputmode="numeric"
-      placeholder="Enter finish odometer"
-      value="${esc(S.shift.finishKm || "")}">
-  </div>
-
-  <div class="card mt">
-    <div class="lbl">Distance</div>
-    <div id="distancePreview" class="mono" style="font-size:22px;font-weight:700;margin-top:6px">
-      —
-    </div>
-  </div>
-
-  <button class="btn amber mt" data-act="finishShift">
-    Finish shift &amp; build sheet
-  </button>`;
-}
-
-function vSheet(){
-  const total=diffH(S.shift.startTime,S.shift.finishTime);
-  const pages=Math.max(1,Math.ceil(S.shift.stops.length/10));
-  const km=(S.shift.finishKm&&S.shift.startKm)?(Number(S.shift.finishKm)-Number(S.shift.startKm)):"";
   return `
-  <div class="muted" style="margin-bottom:14px">${pages>1?pages+" pages · same date, header repeats":"1 page"} ·
-    total <b style="color:var(--hi)">${hDec(total)} h</b>${km!==""?` · ${km} km`:""}</div>
-  <div class="card">
-    <div class="row"><span class="k">Date</span><span class="v">${S.shift.date}</span></div>
-    <div class="row"><span class="k">Truck</span><span class="v">${esc(S.shift.truck)}</span></div>
-    <div class="row"><span class="k">Start / Finish</span><span class="v mono">${fmtT(S.shift.startTime)} → ${fmtT(S.shift.finishTime)}</span></div>
-    <div class="row"><span class="k">Stops</span><span class="v">${S.shift.stops.length}</span></div>
-  </div>
-  <button class="btn go mt" data-act="pdfRun">Save run sheet PDF</button>
-  <button class="btn blue mt" data-act="go" data-v="week">See weekly timesheet</button>
-  <button class="btn dark mt" data-act="fileShift">File shift &amp; go home</button>
-  <p class="note">The PDF reproduces the United Brothers run sheet exactly — office-only fields
-  (2nd temp, bill of lading, reefer, hours, dispatch, signature) are left blank for signing on print.</p>`;
+    <div class="card">
+
+      <div class="lbl">
+        Finish mileage
+      </div>
+
+      <input
+        id="fkm"
+        type="text"
+        inputmode="decimal"
+        placeholder="Enter finish mileage">
+
+      <div class="muted mt">
+        Start mileage:
+        <b>
+          ${esc(sh?.startKm || "—")}
+        </b>
+      </div>
+
+    </div>
+
+
+    <button
+      class="btn amber mt"
+      data-act="finishShift">
+      Finish shift
+    </button>
+  `;
 }
-function vWeek(){
-  const all=S.past;
 
-  const mon=mondayOf(new Date());
-  const to=new Date(mon);
-  to.setDate(mon.getDate()+6);
 
-  const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+/* =========================================================
+   DAILY SHEET
+========================================================= */
+function vSheet() {
 
-  let wk=0, worked=0;
-  const rows=[];
+  const sh = S.shift;
 
-  for(let i=0;i<7;i++){
-    const d=new Date(mon);
-    d.setDate(mon.getDate()+i);
+  if(!sh) {
+    return `
+      <div class="card muted">
+        No run sheet available.
+      </div>
+    `;
+  }
 
-    const sh=all.find(s=>s.date===todayStr(d));
-    const h=sh?diffH(sh.startTime,sh.finishTime):0;
+
+  const total =
+    diffH(
+      sh.startTime,
+      sh.finishTime
+    );
+
+  const pages =
+    Math.max(
+      1,
+      Math.ceil(
+        (sh.stops || []).length / 10
+      )
+    );
+
+  const km =
+    sh.finishKm && sh.startKm
+      ? Number(sh.finishKm) -
+        Number(sh.startKm)
+      : "";
+
+
+  return `
+    <div class="card">
+
+      <div class="lbl">
+        Run sheet complete
+      </div>
+
+      <div class="row">
+        <span class="k">Date</span>
+        <span class="v">
+          ${esc(sh.date)}
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="k">Truck</span>
+        <span class="v">
+          ${esc(sh.truck)}
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="k">Hours</span>
+        <span class="v mono">
+          ${hDec(total) || "0.00"} h
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="k">Mileage</span>
+        <span class="v mono">
+          ${km === "" ? "—" : km + " km"}
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="k">Stops</span>
+        <span class="v">
+          ${(sh.stops || []).length}
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="k">Pages</span>
+        <span class="v">
+          ${pages}
+        </span>
+      </div>
+
+    </div>
+
+
+    <button
+      class="btn blue mt"
+      data-act="pdfRun">
+      Generate PDF
+    </button>
+
+
+    <button
+      class="btn dark mt"
+      data-act="go"
+      data-v="home">
+      Back to home
+    </button>
+  `;
+}
+
+
+/* =========================================================
+   WEEK VIEW
+========================================================= */
+function vWeek() {
+
+  const all = S.past;
+
+  const mon = mondayOf(new Date());
+  const to = new Date(mon);
+
+  to.setDate(mon.getDate() + 6);
+
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+  ];
+
+
+  let wk = 0;
+  let worked = 0;
+
+  const rows = [];
+
+
+  for(let i = 0; i < 7; i++) {
+
+    const d = new Date(mon);
+
+    d.setDate(mon.getDate() + i);
+
+    const sh =
+      all.find(
+        s => s.date === todayStr(d)
+      );
+
+    const h =
+      sh
+        ? diffH(
+            sh.startTime,
+            sh.finishTime
+          )
+        : 0;
 
     if(sh) worked++;
-    wk+=h;
+
+    wk += h;
+
 
     rows.push(`
-      <div class="row" style="padding:6px 0">
-        <span class="k">${days[i]}</span>
-        <span class="v mono" style="font-size:13px">
-          ${sh?fmtT(sh.startTime):"--:--"} → ${sh?fmtT(sh.finishTime):"--:--"}${h?" · "+hDec(h)+" h":""}
+      <div
+        class="row"
+        style="padding:6px 0">
+
+        <span class="k">
+          ${days[i]}
         </span>
+
+        <span
+          class="v mono"
+          style="font-size:13px">
+
+          ${
+            sh
+              ? fmtT(sh.startTime)
+              : "--:--"
+          }
+
+          →
+
+          ${
+            sh
+              ? fmtT(sh.finishTime)
+              : "--:--"
+          }
+
+          ${
+            h
+              ? " · " + hDec(h) + " h"
+              : ""
+          }
+
+        </span>
+
       </div>
     `);
   }
 
+
   return `
-  <div class="card" style="padding:12px 14px">
-    <div class="lbl">Week of ${todayStr(mon)} → ${todayStr(to)}</div>
+    <div style="
+      display:flex;
+      gap:12px;
+      margin-top:8px">
 
-    <div style="display:flex;gap:12px;margin-top:8px">
       <div class="stat">
-        <div class="lbl">Hours</div>
-        <div class="n mono" style="color:var(--amber);font-size:20px">
-          ${hDec(wk)||"0.00"}
+
+        <div class="lbl">
+          Hours
         </div>
-      </div>
 
-      <div class="stat">
-        <div class="lbl">Days</div>
-        <div class="n" style="font-size:20px">${worked}</div>
-      </div>
+        <div
+          class="n mono"
+          style="
+            color:var(--amber);
+            font-size:20px">
 
-      <div class="stat">
-        <div class="lbl">Avg / day</div>
-        <div class="n mono" style="font-size:20px">
-          ${worked?hDec(wk/worked):"0.00"}
+          ${hDec(wk) || "0.00"}
+
         </div>
+
       </div>
+
+
+      <div class="stat">
+
+        <div class="lbl">
+          Days
+        </div>
+
+        <div
+          class="n"
+          style="font-size:20px">
+
+          ${worked}
+
+        </div>
+
+      </div>
+
+
+      <div class="stat">
+
+        <div class="lbl">
+          Avg / day
+        </div>
+
+        <div
+          class="n mono"
+          style="font-size:20px">
+
+          ${
+            worked
+              ? hDec(wk / worked)
+              : "0.00"
+          }
+
+        </div>
+
+      </div>
+
     </div>
 
-    <div class="muted" style="margin-top:6px;font-size:12px">
-      ${esc(S.profile.name)}${S.profile.corp?" · "+esc(S.profile.corp):""}
+
+    <div
+      class="muted"
+      style="
+        margin-top:6px;
+        font-size:12px">
+
+      ${esc(S.profile?.name || "")}
+
+      ${
+        S.profile?.corp
+          ? " · " + esc(S.profile.corp)
+          : ""
+      }
+
     </div>
-  </div>
 
-  <div class="lbl" style="margin:12px 2px 6px">
-    Daily breakdown
-  </div>
 
-  <div class="card" style="padding:8px 14px">
-    ${rows.join("")}
+    <div
+      style="
+        margin-top:8px">
 
-    <div class="row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:8px">
-      <span class="k" style="font-weight:600;color:var(--hi)">
+      ${rows.join("")}
+
+    </div>
+
+
+    <div
+      class="row"
+      style="
+        border-top:1px solid var(--line);
+        margin-top:4px;
+        padding-top:8px">
+
+      <span
+        class="k"
+        style="
+          font-weight:600;
+          color:var(--hi)">
+
         Week total
+
       </span>
-      <span class="v mono" style="color:var(--amber)">
-        ${hDec(wk)||"0.00"} h
+
+      <span
+        class="v mono"
+        style="color:var(--amber)">
+
+        ${hDec(wk) || "0.00"} h
+
       </span>
+
     </div>
-  </div>
 
-  <button class="btn go" style="margin-top:10px" data-act="pdfWeek">
-    Save weekly timesheet PDF
-  </button>`;
-}
-function vSheets(){
-  const dayList=S.past.map((s,i)=>({s,i})).filter(e=>e.s.done)
-    .sort((a,b)=>(b.s.startTime||0)-(a.s.startTime||0));
-  const dayRows = dayList.length ? dayList.map(({s,i})=>{
-    const h=diffH(s.startTime,s.finishTime);
-    const km=(s.finishKm&&s.startKm)?(Number(s.finishKm)-Number(s.startKm)):"";
-    const wd=WD[parseDate(s.date).getDay()];
-    return `<button class="stoprow" data-act="pdfDay" data-i="${i}">
-      <div style="flex:1">
-        <div style="font-weight:600">${s.date} · ${wd}</div>
-        <div class="sub mono">${hDec(h)||"0.00"} h${km!==""?" · "+km+" km":""} · ${(s.stops||[]).length} stops</div>
-      </div>
-      <div style="color:var(--blue);font-size:13px;white-space:nowrap">PDF ›</div>
-    </button>`;
-  }).join("") : `<div class="card muted">No saved run sheets yet. Finish a shift and it'll appear here.</div>`;
 
-  const weekMap={};
-  S.past.filter(s=>s.done).forEach(s=>{ const m=todayStr(mondayOf(parseDate(s.date))); (weekMap[m]=weekMap[m]||[]).push(s); });
-  const weekKeys=Object.keys(weekMap).sort().reverse();
-  const weekRows = weekKeys.length ? weekKeys.map(m=>{
-    const listw=weekMap[m]; let tot=0; listw.forEach(s=>tot+=diffH(s.startTime,s.finishTime));
-    return `<button class="stoprow" data-act="pdfWeekOf" data-mon="${m}">
-      <div style="flex:1">
-        <div style="font-weight:600">Week of ${m}</div>
-        <div class="sub mono">${hDec(tot)||"0.00"} h · ${listw.length} day${listw.length>1?"s":""}</div>
-      </div>
-      <div style="color:var(--blue);font-size:13px;white-space:nowrap">PDF ›</div>
-    </button>`;
-  }).join("") : `<div class="card muted">No weekly timesheets yet.</div>`;
-
-  return `
-    <div class="lbl" style="margin:4px 2px 10px">Daily run sheets</div>
-    ${dayRows}
-    <div class="lbl" style="margin:22px 2px 10px">Weekly timesheets</div>
-    ${weekRows}
-    <p class="note">Every finished day and week is saved on this phone. Tap any to regenerate its PDF — identical each time. (Once we add the office database, these sync there too.)</p>`;
+    <button
+      class="btn blue mt"
+      data-act="pdfWeek">
+      Generate weekly PDF
+    </button>
+  `;
 }
 
-/* ---------- live editing helpers ---------- */
-function blankNext(){ return {company:"",city:"",trailer:"",bobtail:false,status:null,fuel:"",temp:"",timeIn:null,timeOut:null,remarks:""}; }
-function activeStop(){
-  if(S.view==="editStop") return S.draft;
-  if(S.view==="shift" && S.shift && S.shift.phase==="atStop") return S.shift.stops[S.shift.stops.length-1];
-  return null;
-}
-function syncLive(){
-  const g=id=>document.getElementById(id);
-  const o=activeStop();
-  if(o){
-    if(g("trailer")&&!o.bobtail) o.trailer=g("trailer").value;
-    if(g("temp")) o.temp=g("temp").value;
-    if(g("company")) o.company=g("company").value;
-    if(g("city")) o.city=g("city").value;
-    if(g("remarks")) o.remarks=g("remarks").value;
-  }
-  if(S.view==="shift" && S.shift && S.shift.next){
-    if(g("nextCompany")) S.shift.next.company=g("nextCompany").value;
-    if(g("nextCity")) S.shift.next.city=g("nextCity").value;
-  }
-}
-
-/* ---------- actions ---------- */
-document.addEventListener("click", e=>{
-  const t=e.target.closest("[data-act]"); if(!t) return;
-  const a=t.dataset.act;
-  if(a==="go"){ go(t.dataset.v); return; }
-  if(a==="tab"){
-  const tab=t.dataset.tab;
-
-  if(S.view==="shift"||S.view==="summary"||S.view==="editStop"){
-    syncLive();
-  }
-
-  if(tab==="shift"){
-    go(S.shift&&!S.shift.done?"shift":"home");
-  }else{
-    go(tab);
-  }
-
-  return;
-}
-  if(a==="tempUnit"){
-if(!S.profile) S.profile={};
-S.profile.tempUnit=t.dataset.unit==="F"?"F":"C";
-persist();
-render();
-return;
-}
-
-  if(a==="saveProfile"){
-S.profile={
-name:(document.getElementById("pn").value.trim()||"Driver"),
-corp:document.getElementById("pc").value.trim(),
-homeBase:document.getElementById("ph").value.trim(),
-tempUnit:S.profile?.tempUnit||"C"
-};
-persist();
-go("home");
-return;
-}
-
-  if(a==="startShift"){
-const truck=document.getElementById("truck").value.trim();
-if(!truck){ toast("Enter today's truck #"); return; }
-
-const startKm=document.getElementById("startKm").value.trim();
-if(!startKm){ toast("Enter starting mileage"); return; }
-
-const company=document.getElementById("startCo").value.trim();
-const city=document.getElementById("startCity").value.trim();
-const t=round15(Date.now());
-
-S.shift={ id:t, date:todayStr(), truck, startCompany:company, startCity:city, startTime:t, finishTime:null,
-      phase:"atStop", next:blankNext(), endCompany:company,
-      stops:[ {trailer:"",bobtail:false,status:null,fuel:"",temp:"",company,city,timeIn:t,timeOut:null,remarks:"",pinned:"start"} ],
-startKm:startKm, finishKm:"", done:false };
-    persist(); go("shift"); return;
-  }
-  if(a==="editStop"){ S.editMode="edit"; S.editIdx=Number(t.dataset.i); S.draft={...S.shift.stops[S.editIdx]}; go("editStop"); return; }
-  if(a==="bobtail"){ syncLive(); const o=activeStop(); if(o){o.bobtail=!o.bobtail; if(o.bobtail)o.trailer="";} render(); return; }
-  if(a==="status"){ syncLive(); const o=activeStop(); const s=t.dataset.s; if(o){o.status=s; if(s==="empty"){o.fuel="";o.temp="";}} render(); return; }
-  if(a==="fuel"){ syncLive(); const o=activeStop(); if(o)o.fuel=t.dataset.f; render(); return; }
-  if(a==="stamp"){ syncLive(); if(S.view==="editStop"&&S.draft){ S.draft[t.dataset.w==="in"?"timeIn":"timeOut"]=Date.now(); } render(); return; }
-  if(a==="saveStop"){
-    syncLive();
-    S.shift.stops[S.editIdx]={...S.draft};
-    if(S.draft.pinned==="end") S.shift.endCompany=S.draft.company;
-    persist(); go("shift"); return;
-  }
-  if(a==="depart"){
-    syncLive();
-    if(!S.shift.next || !(S.shift.next.company||"").trim()){ toast("Enter your next stop, or use Return to yard"); return; }
-    S.shift.stops[S.shift.stops.length-1].timeOut=Date.now();
-    S.shift.phase="driving"; persist(); go("shift"); return;
-  }
-  if(a==="returnToYard"){
-    syncLive();
-    S.shift.next={...blankNext(), company:(S.shift.endCompany||S.profile.homeBase||S.shift.startCompany||""), pinned:"end"};
-    S.shift.stops[S.shift.stops.length-1].timeOut=Date.now();
-    S.shift.phase="driving"; persist(); go("shift"); return;
-  }
-  if(a==="arrive"){
-    syncLive();
-    const n=S.shift.next; n.timeIn=Date.now(); n.timeOut=null;
-    if(n.pinned==="end") S.shift.endCompany=n.company;
-    S.shift.stops.push(n); S.shift.next=blankNext(); S.shift.phase="atStop"; persist(); go("shift"); return;
-  }
-  if(a==="endShift"){
-  syncLive();
-
-  const ok = confirm(
-    "End this shift?\n\nMake sure you are back at the yard and have completed this stop."
-  );
-
-  if(!ok) return;
-
-  go("final");
-  return;
-}
-if(a==="finishShift"){
-  const finishKm=document.getElementById("fkm").value.trim();
-  const startKm=String(S.shift.startKm || "").trim();
-
-  if(!startKm){
-    toast("Start mileage is missing from this shift");
-    return;
-  }
-
-  if(!finishKm){
-    toast("Enter finish mileage");
-    return;
-  }
-
-  if(!/^\d+(\.\d+)?$/.test(finishKm)){
-    toast("Mileage must contain numbers only");
-    return;
-  }
-
-  if(Number(finishKm) < Number(startKm)){
-    toast("Finish mileage cannot be lower than start mileage");
-    return;
-  }
-
-  S.shift.finishKm=finishKm;
-
-  const actualFinish=Date.now();
-  const t=round15(actualFinish);
-
-  S.shift.stops[S.shift.stops.length-1].timeOut=actualFinish;
-  S.shift.finishTime=t;
-  S.shift.done=true;
-
-  upsertPast(S.shift);
-  persist();
-  go("sheet");
-  return;
-}
-  if(a==="fileShift"){ S.shift=null; persist(); go("home"); return; }
-  if(a==="masterReset"){
-  const ok=confirm(
-    "MASTER RESET\n\n" +
-    "This will permanently delete:\n" +
-    "• Your profile\n" +
-    "• All saved shifts\n" +
-    "• All run sheets\n" +
-    "• All weekly timesheets\n" +
-    "• The current shift\n\n" +
-    "This cannot be undone.\n\n" +
-    "Continue?"
-  );
-
-  if(!ok) return;
-
-  try{
-    localStorage.removeItem("ubt");
-  }catch(e){}
-
-  S={
-    profile:null,
-    past:[],
-    shift:null,
-    view:"setup",
-    editMode:"edit",
-    editIdx:null,
-    draft:null
-  };
-
-  render();
-  toast("All data has been reset");
-  return;
-}
-  if(a==="pdfRun"){ makeRunSheet(S.shift); return; }
-  if(a==="pdfWeek"){ makeWeekly(); return; }
-  if(a==="pdfDay"){ makeRunSheet(S.past[Number(t.dataset.i)]); return; }
-  if(a==="pdfWeekOf"){ makeWeekly(parseDate(t.dataset.mon)); return; }
-  if(a==="print"){ S.view==="sheet"?makeRunSheet(S.shift):makeWeekly(); return; }
-});
-
-/* keep uncontrolled text in state as the driver types */
-app.addEventListener("input", e=>{ if(S.view==="editStop"||S.view==="shift") syncLive(); });
-
-/* live elapsed clock on the shift screen */
-setInterval(()=>{ if(S.view==="shift"&&S.shift){ const el=document.getElementById("elapsed");
-  if(el) el.textContent=hHM(diffH(S.shift.startTime,Date.now())); } },1000);
 
 /* =========================================================
-   PDF GENERATION — strict United Brothers layout (pdf-lib)
-   ========================================================= */
-async function sharePdf(bytes, filename){
-  const blob=new Blob([bytes],{type:"application/pdf"});
-  try{
-    const file=new File([blob],filename,{type:"application/pdf"});
-    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:filename}); return; }
-  }catch(e){}
-  const url=URL.createObjectURL(blob); const a=document.createElement("a");
-  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),4000);
+   SAVED SHEETS
+========================================================= */
+function vSheets() {
+
+  const dayList =
+    S.past
+      .map((s, i) => ({s, i}))
+      .filter(e => e.s.done)
+      .sort(
+        (a,b) =>
+          (b.s.startTime || 0) -
+          (a.s.startTime || 0)
+      );
+
+
+  const dayRows =
+    dayList.length
+      ? dayList.map(({s, i}) => {
+
+          const h =
+            diffH(
+              s.startTime,
+              s.finishTime
+            );
+
+          const km =
+            s.finishKm && s.startKm
+              ? Number(s.finishKm) -
+                Number(s.startKm)
+              : "";
+
+          const wd =
+            WD[
+              parseDate(s.date).getDay()
+            ];
+
+
+          return `
+            <button
+              class="stoprow"
+              data-act="pdfDay"
+              data-i="${i}">
+
+              <div style="flex:1">
+
+                <div style="font-weight:600">
+                  ${s.date} · ${wd}
+                </div>
+
+                <div class="sub mono">
+                  ${hDec(h) || "0.00"} h
+
+                  ${
+                    km !== ""
+                      ? " · " + km + " km"
+                      : ""
+                  }
+
+                  ·
+                  ${(s.stops || []).length}
+                  stops
+                </div>
+
+              </div>
+
+              <div
+                style="
+                  color:var(--blue);
+                  font-size:13px;
+                  white-space:nowrap">
+
+                PDF ›
+
+              </div>
+
+            </button>
+          `;
+        }).join("")
+      : `
+        <div class="card muted">
+          No saved run sheets yet.
+          Finish a shift and it'll appear here.
+        </div>
+      `;
+
+
+  const weekMap = {};
+
+
+  S.past
+    .filter(s => s.done)
+    .forEach(s => {
+
+      const m =
+        todayStr(
+          mondayOf(
+            parseDate(s.date)
+          )
+        );
+
+      (weekMap[m] =
+        weekMap[m] || []
+      ).push(s);
+
+    });
+
+
+  const weekKeys =
+    Object.keys(weekMap)
+      .sort()
+      .reverse();
+
+
+  const weekRows =
+    weekKeys.length
+      ? weekKeys.map(m => {
+
+          const listw = weekMap[m];
+
+          let tot = 0;
+
+          listw.forEach(
+            s => {
+              tot += diffH(
+                s.startTime,
+                s.finishTime
+              );
+            }
+          );
+
+
+          return `
+            <button
+              class="stoprow"
+              data-act="pdfWeekOf"
+              data-mon="${m}">
+
+              <div style="flex:1">
+
+                <div style="font-weight:600">
+                  Week of ${m}
+                </div>
+
+                <div class="sub mono">
+                  ${hDec(tot) || "0.00"} h
+                  ·
+                  ${listw.length}
+                  day${listw.length > 1 ? "s" : ""}
+                </div>
+
+              </div>
+
+              <div
+                style="
+                  color:var(--blue);
+                  font-size:13px;
+                  white-space:nowrap">
+
+                PDF ›
+
+              </div>
+
+            </button>
+          `;
+
+        }).join("")
+      : `
+        <div class="card muted">
+          No weekly timesheets yet.
+        </div>
+      `;
+
+
+  return `
+    <div
+      class="lbl"
+      style="
+        margin:4px 2px 10px">
+
+      Daily run sheets
+
+    </div>
+
+    ${dayRows}
+
+
+    <div
+      class="lbl"
+      style="
+        margin:22px 2px 10px">
+
+      Weekly timesheets
+
+    </div>
+
+    ${weekRows}
+
+
+    <p class="note">
+
+      Every finished day and week is saved on this phone.
+      Tap any to regenerate its PDF — identical each time.
+
+    </p>
+  `;
+}
+
+
+/* =========================================================
+   LIVE EDITING
+========================================================= */
+function activeStop() {
+
+  if(S.view === "editStop") {
+    return S.draft;
+  }
+
+  if(
+    S.view === "shift" &&
+    S.shift &&
+    S.shift.phase === "atStop"
+  ) {
+    return S.shift.stops[
+      S.shift.stops.length - 1
+    ];
+  }
+
+  return null;
+}
+
+
+function syncLive() {
+
+  const g = id =>
+    document.getElementById(id);
+
+  const o = activeStop();
+
+
+  if(o) {
+
+    if(
+      g("trailer") &&
+      !o.bobtail
+    ) {
+      o.trailer =
+        g("trailer").value;
+    }
+
+
+    if(g("temp")) {
+
+      o.temp =
+        cleanTemp(
+          g("temp").value
+        );
+
+    }
+
+
+    if(g("company")) {
+      o.company =
+        g("company").value;
+    }
+
+
+    if(g("city")) {
+      o.city =
+        g("city").value;
+    }
+
+
+    if(g("remarks")) {
+      o.remarks =
+        g("remarks").value;
+    }
+  }
+
+
+  if(
+    S.shift &&
+    S.shift.next &&
+    (
+      S.view === "shift"
+    )
+  ) {
+
+    if(g("nextCompany")) {
+      S.shift.next.company =
+        g("nextCompany").value;
+    }
+
+    if(g("nextCity")) {
+      S.shift.next.city =
+        g("nextCity").value;
+    }
+
+  }
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+document.addEventListener("click", e => {
+
+  const t =
+    e.target.closest("[data-act]");
+
+  if(!t) return;
+
+  const a = t.dataset.act;
+
+
+  /* Navigation */
+  if(a === "go") {
+
+    go(t.dataset.v);
+
+    return;
+  }
+
+
+  /* Tabs */
+  if(a === "tab") {
+
+    const tab = t.dataset.tab;
+
+    if(
+      S.view === "shift" ||
+      S.view === "summary" ||
+      S.view === "editStop"
+    ) {
+      syncLive();
+    }
+
+
+    if(tab === "shift") {
+
+      go(
+        S.shift && !S.shift.done
+          ? "shift"
+          : "home"
+      );
+
+    } else {
+
+      go(tab);
+
+    }
+
+    return;
+  }
+
+
+  /* Temperature unit */
+  if(a === "tempUnit") {
+
+    if(!S.profile) {
+      S.profile = {
+        name: "Driver",
+        corp: "",
+        homeBase: "",
+        tempUnit: "C"
+      };
+    }
+
+    S.profile.tempUnit =
+      t.dataset.unit === "F"
+        ? "F"
+        : "C";
+
+    persist();
+    render();
+
+    return;
+  }
+
+
+  /* Save profile */
+  if(a === "saveProfile") {
+
+    S.profile = {
+
+      name:
+        document
+          .getElementById("pn")
+          .value
+          .trim() || "Driver",
+
+      corp:
+        document
+          .getElementById("pc")
+          .value
+          .trim(),
+
+      homeBase:
+        document
+          .getElementById("ph")
+          .value
+          .trim(),
+
+      tempUnit:
+        S.profile?.tempUnit === "F"
+          ? "F"
+          : "C"
+    };
+
+
+    persist();
+
+    go("home");
+
+    return;
+  }
+
+
+  /* Start shift from home */
+  if(a === "startShiftHome") {
+
+    S.view = "shiftStart";
+
+    /*
+       Temporary special handling:
+       use home screen to show start form.
+    */
+
+    renderStartShift();
+
+    return;
+  }
+
+
+  /* Start shift */
+  if(a === "startShift") {
+
+    const truck =
+      document
+        .getElementById("truck")
+        .value
+        .trim();
+
+
+    if(!truck) {
+      toast("Enter today's truck #");
+      return;
+    }
+
+
+    const startKm =
+      document
+        .getElementById("startKm")
+        .value
+        .trim();
+
+
+    if(!startKm) {
+      toast("Enter starting mileage");
+      return;
+    }
+
+
+    if(!/^\d+(\.\d+)?$/.test(startKm)) {
+      toast("Starting mileage must contain numbers only");
+      return;
+    }
+
+
+    const company =
+      document
+        .getElementById("startCo")
+        .value
+        .trim();
+
+
+    const city =
+      document
+        .getElementById("startCity")
+        .value
+        .trim();
+
+
+    const t = round15(Date.now());
+
+
+    S.shift = {
+
+      id: t,
+
+      date: todayStr(),
+
+      truck,
+
+      startCompany: company,
+
+      startCity: city,
+
+      startTime: t,
+
+      finishTime: null,
+
+      phase: "atStop",
+
+      next: blankNext(),
+
+      endCompany: company,
+
+      stops: [
+
+        {
+          trailer: "",
+          bobtail: false,
+          status: null,
+          fuel: "",
+          temp: "",
+          company,
+          city,
+          timeIn: t,
+          timeOut: null,
+          remarks: "",
+          pinned: "start"
+        }
+
+      ],
+
+      startKm,
+
+      finishKm: "",
+
+      done: false
+
+    };
+
+
+    persist();
+
+    go("shift");
+
+    return;
+  }
+
+
+  /* Edit stop */
+  if(a === "editStop") {
+
+    if(!S.shift) return;
+
+    S.editMode = "edit";
+
+    S.editIdx =
+      Number(t.dataset.i);
+
+    S.draft = {
+      ...S.shift.stops[
+        S.editIdx
+      ]
+    };
+
+    go("editStop");
+
+    return;
+  }
+
+
+  /* Bobtail */
+  if(a === "bobtail") {
+
+    syncLive();
+
+    const o = activeStop();
+
+    if(o) {
+
+      o.bobtail =
+        !o.bobtail;
+
+      if(o.bobtail) {
+        o.trailer = "";
+      }
+
+    }
+
+    render();
+
+    return;
+  }
+
+
+  /* Status */
+  if(a === "status") {
+
+    syncLive();
+
+    const o = activeStop();
+
+    const s = t.dataset.s;
+
+    if(o) {
+
+      o.status = s;
+
+      if(s === "empty") {
+        o.fuel = "";
+        o.temp = "";
+      }
+
+    }
+
+    render();
+
+    return;
+  }
+
+
+  /* Fuel */
+  if(a === "fuel") {
+
+    syncLive();
+
+    const o = activeStop();
+
+    if(o) {
+      o.fuel = t.dataset.f;
+    }
+
+    render();
+
+    return;
+  }
+
+
+  /* Time stamp */
+  if(a === "stamp") {
+
+    syncLive();
+
+    if(
+      S.view === "editStop" &&
+      S.draft
+    ) {
+
+      S.draft[
+        t.dataset.w === "in"
+          ? "timeIn"
+          : "timeOut"
+      ] = Date.now();
+
+    }
+
+    render();
+
+    return;
+  }
+
+
+  /* Save edited stop */
+  if(a === "saveStop") {
+
+    syncLive();
+
+    if(
+      !S.shift ||
+      S.editIdx == null ||
+      !S.draft
+    ) {
+      return;
+    }
+
+
+    S.shift.stops[
+      S.editIdx
+    ] = {
+      ...S.draft
+    };
+
+
+    if(
+      S.draft.pinned === "end"
+    ) {
+      S.shift.endCompany =
+        S.draft.company;
+    }
+
+
+    persist();
+
+    go("shift");
+
+    return;
+  }
+
+
+  /* Depart */
+  if(a === "depart") {
+
+    syncLive();
+
+
+    if(
+      !S.shift.next ||
+      !(S.shift.next.company || "").trim()
+    ) {
+
+      toast(
+        "Enter your next stop, or use Return to yard"
+      );
+
+      return;
+    }
+
+
+    S.shift.stops[
+      S.shift.stops.length - 1
+    ].timeOut = Date.now();
+
+
+    S.shift.phase = "driving";
+
+    persist();
+
+    go("shift");
+
+    return;
+  }
+
+
+  /* Return to yard */
+  if(a === "returnToYard") {
+
+    syncLive();
+
+
+    S.shift.next = {
+      ...blankNext(),
+
+      company:
+        S.shift.endCompany ||
+        S.profile.homeBase ||
+        S.shift.startCompany ||
+        "",
+
+      pinned: "end"
+    };
+
+
+    S.shift.stops[
+      S.shift.stops.length - 1
+    ].timeOut = Date.now();
+
+
+    S.shift.phase = "driving";
+
+    persist();
+
+    go("shift");
+
+    return;
+  }
+
+
+  /* Arrive */
+  if(a === "arrive") {
+
+    syncLive();
+
+    const n = {
+      ...S.shift.next
+    };
+
+
+    n.timeIn = Date.now();
+    n.timeOut = null;
+
+
+    if(n.pinned === "end") {
+      S.shift.endCompany =
+        n.company;
+    }
+
+
+    S.shift.stops.push(n);
+
+    S.shift.next =
+      blankNext();
+
+    S.shift.phase =
+      "atStop";
+
+
+    persist();
+
+    go("shift");
+
+    return;
+  }
+
+
+  /* End shift */
+  if(a === "endShift") {
+
+    syncLive();
+
+
+    const ok = confirm(
+      "End this shift?\n\n" +
+      "Make sure you are back at the yard " +
+      "and have completed this stop."
+    );
+
+
+    if(!ok) return;
+
+    go("final");
+
+    return;
+  }
+
+
+  /* Finish shift */
+  if(a === "finishShift") {
+
+    const finishKm =
+      document
+        .getElementById("fkm")
+        .value
+        .trim();
+
+
+    const startKm =
+      String(
+        S.shift.startKm || ""
+      ).trim();
+
+
+    if(!startKm) {
+      toast(
+        "Start mileage is missing from this shift"
+      );
+      return;
+    }
+
+
+    if(!finishKm) {
+      toast("Enter finish mileage");
+      return;
+    }
+
+
+    if(!/^\d+(\.\d+)?$/.test(finishKm)) {
+
+      toast(
+        "Mileage must contain numbers only"
+      );
+
+      return;
+    }
+
+
+    if(
+      Number(finishKm) <
+      Number(startKm)
+    ) {
+
+      toast(
+        "Finish mileage cannot be lower than start mileage"
+      );
+
+      return;
+    }
+
+
+    S.shift.finishKm =
+      finishKm;
+
+
+    const actualFinish =
+      Date.now();
+
+    const t =
+      round15(actualFinish);
+
+
+    S.shift.stops[
+      S.shift.stops.length - 1
+    ].timeOut =
+      actualFinish;
+
+
+    S.shift.finishTime =
+      t;
+
+    S.shift.done =
+      true;
+
+
+    upsertPast(S.shift);
+
+    persist();
+
+    go("sheet");
+
+    return;
+  }
+
+
+  /* Abandon active shift */
+  if(a === "fileShift") {
+
+    S.shift = null;
+
+    persist();
+
+    go("home");
+
+    return;
+  }
+
+
+  /* Master reset */
+  if(a === "masterReset") {
+
+    const ok = confirm(
+      "MASTER RESET\n\n" +
+      "This will permanently delete:\n" +
+      "• Your profile\n" +
+      "• All saved shifts\n" +
+      "• All run sheets\n" +
+      "• All weekly timesheets\n" +
+      "• The current shift\n\n" +
+      "This cannot be undone.\n\n" +
+      "Continue?"
+    );
+
+
+    if(!ok) return;
+
+
+    try {
+      localStorage.removeItem("ubt");
+    } catch(e) {}
+
+
+    S = {
+
+      profile: null,
+
+      past: [],
+
+      shift: null,
+
+      view: "setup",
+
+      editMode: "edit",
+
+      editIdx: null,
+
+      draft: null
+
+    };
+
+
+    render();
+
+    toast(
+      "All data has been reset"
+    );
+
+    return;
+  }
+
+
+  /* PDFs */
+  if(a === "pdfRun") {
+    makeRunSheet(S.shift);
+    return;
+  }
+
+
+  if(a === "pdfWeek") {
+    makeWeekly();
+    return;
+  }
+
+
+  if(a === "pdfDay") {
+
+    const day =
+      S.past[
+        Number(t.dataset.i)
+      ];
+
+    makeRunSheet(day);
+
+    return;
+  }
+
+
+  if(a === "pdfWeekOf") {
+
+    makeWeekly(
+      parseDate(t.dataset.mon)
+    );
+
+    return;
+  }
+
+
+  if(a === "print") {
+
+    if(S.view === "sheet") {
+      makeRunSheet(S.shift);
+    } else {
+      makeWeekly();
+    }
+
+    return;
+  }
+
+});
+
+
+/* =========================================================
+   START SHIFT FORM RENDER
+========================================================= */
+function renderStartShift() {
+
+  const scr =
+    document.getElementById("scr");
+
+  const navL =
+    document.getElementById("navL");
+
+  const navR =
+    document.getElementById("navR");
+
+
+  navL.innerHTML =
+    `<button
+      class="icon"
+      data-act="go"
+      data-v="home"
+      aria-label="Back">
+      ‹
+    </button>`;
+
+
+  navR.innerHTML =
+    `<span
+      id="saveStatus"
+      class="save-status">
+      ✓ Saved
+    </span>`;
+
+
+  scr.textContent =
+    "Start shift";
+
+
+  app.innerHTML =
+    startShiftForm();
+
+
+  const tb =
+    document.getElementById("tabbar");
+
+  if(tb) {
+    tb.style.display = "none";
+  }
+}
+
+
+/* =========================================================
+   INPUT HANDLING
+========================================================= */
+app.addEventListener("input", e => {
+
+  if(
+    S.view === "editStop" ||
+    S.view === "shift"
+  ) {
+    syncLive();
+  }
+
+
+  /*
+     Temperature field:
+     keep minus sign and decimal point.
+  */
+  if(e.target.id === "temp") {
+
+    const cleaned =
+      cleanTemp(
+        e.target.value
+      );
+
+    if(e.target.value !== cleaned) {
+
+      const pos =
+        e.target.selectionStart;
+
+      e.target.value = cleaned;
+
+      try {
+        e.target.setSelectionRange(
+          pos,
+          pos
+        );
+      } catch(err) {}
+    }
+
+
+    const o = activeStop();
+
+    if(o) {
+      o.temp = cleaned;
+    }
+  }
+
+});
+
+
+/* =========================================================
+   LIVE ELAPSED CLOCK
+========================================================= */
+setInterval(() => {
+
+  if(
+    S.view === "shift" &&
+    S.shift
+  ) {
+
+    const el =
+      document.getElementById("elapsed");
+
+    if(el) {
+
+      el.textContent =
+        hHM(
+          diffH(
+            S.shift.startTime,
+            Date.now()
+          )
+        );
+
+    }
+
+  }
+
+}, 1000);
+
+
+/* =========================================================
+   PDF SHARING / DOWNLOAD
+========================================================= */
+async function sharePdf(bytes, filename) {
+
+  const blob =
+    new Blob(
+      [bytes],
+      {type: "application/pdf"}
+    );
+
+
+  try {
+
+    const file =
+      new File(
+        [blob],
+        filename,
+        {type: "application/pdf"}
+      );
+
+
+    if(
+      navigator.canShare &&
+      navigator.canShare({
+        files: [file]
+      })
+    ) {
+
+      await navigator.share({
+        files: [file],
+        title: filename
+      });
+
+      return;
+    }
+
+  } catch(e) {}
+
+
+  const url =
+    URL.createObjectURL(blob);
+
+  const a =
+    document.createElement("a");
+
+  a.href = url;
+
+  a.download = filename;
+
+  document.body.appendChild(a);
+
+  a.click();
+
+  a.remove();
+
+
+  setTimeout(
+    () => URL.revokeObjectURL(url),
+    4000
+  );
+
+
   toast("PDF saved");
 }
 
-async function makeRunSheet(shift){
-  if(!PDFLib){ toast("PDF library still loading…"); return; }
-  const {PDFDocument,StandardFonts,rgb}=PDFLib;
-  const doc=await PDFDocument.create();
-  const F=await doc.embedFont(StandardFonts.Helvetica);
-  const B=await doc.embedFont(StandardFonts.HelveticaBold);
-  const sh=shift||S.shift, pr=S.profile;
-  const total=hDec(diffH(sh.startTime,sh.finishTime));
-  const stops=sh.stops||[];
-  const pages=Math.max(1,Math.ceil(stops.length/10));
-  for(let p=0;p<pages;p++){
-    const rows=stops.slice(p*10,p*10+10);
-    drawRunPage(doc,F,B,rgb,sh,pr,rows,total,p+1,pages);
+
+/* =========================================================
+   DAILY RUN SHEET PDF
+========================================================= */
+async function makeRunSheet(shift) {
+
+  if(!PDFLib) {
+    toast(
+      "PDF library still loading…"
+    );
+    return;
   }
-  const bytes=await doc.save();
-  await sharePdf(bytes, `UBT_RunSheet_${sh.date}.pdf`);
+
+
+  const {
+    PDFDocument,
+    StandardFonts,
+    rgb
+  } = PDFLib;
+
+
+  const doc =
+    await PDFDocument.create();
+
+
+  const F =
+    await doc.embedFont(
+      StandardFonts.Helvetica
+    );
+
+  const B =
+    await doc.embedFont(
+      StandardFonts.HelveticaBold
+    );
+
+
+  const sh =
+    shift || S.shift;
+
+  const pr =
+    S.profile;
+
+
+  const total =
+    hDec(
+      diffH(
+        sh.startTime,
+        sh.finishTime
+      )
+    );
+
+
+  const stops =
+    sh.stops || [];
+
+
+  const pages =
+    Math.max(
+      1,
+      Math.ceil(
+        stops.length / 10
+      )
+    );
+
+
+  for(
+    let p = 0;
+    p < pages;
+    p++
+  ) {
+
+    const rows =
+      stops.slice(
+        p * 10,
+        p * 10 + 10
+      );
+
+
+    drawRunPage(
+      doc,
+      F,
+      B,
+      rgb,
+      sh,
+      pr,
+      rows,
+      total,
+      p + 1,
+      pages
+    );
+
+  }
+
+
+  const bytes =
+    await doc.save();
+
+
+  await sharePdf(
+    bytes,
+    `UBT_RunSheet_${sh.date}.pdf`
+  );
 }
 
-function drawRunPage(doc,F,B,rgb,sh,pr,rows,total,page,pages){
-  const W=792,H=612,pg=doc.addPage([W,H]);
-  const ink=rgb(0.1,0.1,0.09), grey=rgb(0.45,0.45,0.43);
-  const T=y=>H-y;                                  // top-based y helper
-  const line=(x1,y1,x2,y2,w=0.7,c=ink)=>pg.drawLine({start:{x:x1,y:T(y1)},end:{x:x2,y:T(y2)},thickness:w,color:c});
-  const box=(x,y,w,h,t=0.7)=>pg.drawRectangle({x,y:T(y+h),width:w,height:h,borderColor:ink,borderWidth:t});
-  const txt=(s,x,y,size=8,f=F,c=ink)=>{ if(s==null||s==="")return; pg.drawText(String(s),{x,y:T(y),size,font:f,color:c}); };
-  const ctr=(s,x,w,y,size=8,f=F,c=ink)=>{ if(s==null||s==="")return; const tw=f.widthOfTextAtSize(String(s),size); txt(s,x+(w-tw)/2,y,size,f,c); };
 
-  const M=22, right=W-M;
-  /* ---- header band ---- */
-  box(M,M,right-M,66);
-  // left labelled cells
-  const lx=M, lw=150; const cells=[["DATE",sh.date],["START TIME",fmtT(sh.startTime)],["FINISH TIME",fmtT(sh.finishTime)],["TOTAL HOURS",total]];
-  cells.forEach((c,i)=>{ const y=M+i*16.5; line(lx,y,lx+lw,y,0.5); txt(c[0],lx+3,y+11,7,B); txt(c[1],lx+70,y+11,8,F); });
-  line(lx+lw,M,lx+lw,M+66,0.5); line(lx+66,M,lx+66,M+66,0.4);
-  // centre title
-  ctr("UNITED BROTHERS TRANSPORT LIMITED",lx+lw,right-(lx+lw)-160,M+30,13,B);
-  // right cells NAME / TRUCK #
-  const rx=right-160;
-  line(rx,M,rx,M+66,0.5);
-  line(rx,M+33,right,M+33,0.5);
-  txt("NAME",rx+4,M+14,7,B); txt(pr.name,rx+4,M+27,9,F);
-  txt("TRUCK #",rx+4,M+47,7,B); txt(sh.truck,rx+4,M+60,9,F);
-  if(pages>1) txt(`page ${page}/${pages}`,right-52,M+64,6,F,grey);
+/* =========================================================
+   RUN SHEET PDF PAGE
+========================================================= */
+function drawRunPage(
+  doc,
+  F,
+  B,
+  rgb,
+  sh,
+  pr,
+  rows,
+  total,
+  page,
+  pages
+) {
 
-  /* ---- table ---- */
-  const cols=[
-    ["TRAILER #",70],["LOAD",26],["EMPTY",30],["FUEL LEVEL",74],["TEMP",30],
-    ["CUSTOMER",250],["TEMP",30],["BILL OF LADING #",88],["REMARKS",right-M-70-26-30-74-30-250-30-88]
+  const W = 792;
+  const H = 612;
+
+  const pg =
+    doc.addPage([W, H]);
+
+
+  const ink =
+    rgb(
+      0.1,
+      0.1,
+      0.09
+    );
+
+  const grey =
+    rgb(
+      0.45,
+      0.45,
+      0.43
+    );
+
+
+  const T =
+    y => H - y;
+
+
+  const line =
+    (
+      x1,
+      y1,
+      x2,
+      y2,
+      w = 0.7,
+      c = ink
+    ) =>
+      pg.drawLine({
+        start: {
+          x: x1,
+          y: T(y1)
+        },
+        end: {
+          x: x2,
+          y: T(y2)
+        },
+        thickness: w,
+        color: c
+      });
+
+
+  const box =
+    (
+      x,
+      y,
+      w,
+      h,
+      t = 0.7
+    ) =>
+      pg.drawRectangle({
+        x,
+        y: T(y + h),
+        width: w,
+        height: h,
+        borderColor: ink,
+        borderWidth: t
+      });
+
+
+  const txt =
+    (
+      s,
+      x,
+      y,
+      size = 8,
+      f = F,
+      c = ink
+    ) => {
+
+      if(
+        s == null ||
+        s === ""
+      ) return;
+
+      pg.drawText(
+        String(s),
+        {
+          x,
+          y: T(y),
+          size,
+          font: f,
+          color: c
+        }
+      );
+    };
+
+
+  const ctr =
+    (
+      s,
+      x,
+      w,
+      y,
+      size = 8,
+      f = F,
+      c = ink
+    ) => {
+
+      if(
+        s == null ||
+        s === ""
+      ) return;
+
+      const tw =
+        f.widthOfTextAtSize(
+          String(s),
+          size
+        );
+
+
+      txt(
+        s,
+        x + (w - tw) / 2,
+        y,
+        size,
+        f,
+        c
+      );
+    };
+
+
+  const M = 22;
+  const right = W - M;
+
+
+  /* HEADER */
+  box(
+    M,
+    M,
+    right - M,
+    66
+  );
+
+
+  const lx = M;
+  const lw = 150;
+
+
+  const cells = [
+    ["DATE", sh.date],
+    ["START TIME", fmtT(sh.startTime)],
+    ["FINISH TIME", fmtT(sh.finishTime)],
+    ["TOTAL HOURS", total]
   ];
-  const xs=[]; let cx=M; cols.forEach(c=>{ xs.push(cx); cx+=c[1]; });
-  const tTop=M+72, hHdr=18, rH=30, tableW=right-M;
-  const check=(cxp,cyTop)=>{ line(cxp-4,cyTop,cxp-1,cyTop+3,1.2); line(cxp-1,cyTop+3,cxp+5,cyTop-4,1.2); };
-  // header row
-  box(M,tTop,tableW,hHdr);
-  cols.forEach((c,i)=>{ if(i) line(xs[i],tTop,xs[i],tTop+hHdr+rH*10,0.5); ctr(c[0],xs[i],c[1],tTop+12,c[1]<40?5.5:6.5,B); });
-  // data rows
-  for(let r=0;r<10;r++){
-    const y=tTop+hHdr+r*rH; line(M,y+rH,right,y+rH,0.5);
-    const s=rows[r];
-    // pre-printed template labels (present on every blank row)
-    const fx=xs[3]+5, fy=y+4;
-    const grid=[["Empty",fx,fy],["Qtr",fx+36,fy],["Half",fx,fy+13],["Full",fx+36,fy+13]];
-    grid.forEach(g=>txt(g[0],g[1],g[2]+12,5.5,F,grey));
-    const midX=xs[5]+cols[5][1]/2;
-    txt("Name:",xs[5]+3,y+11,6,F,grey);
-    txt("City:",midX,y+11,6,F,grey);
-    txt("Time In:",xs[5]+3,y+25,6,F,grey);
-    txt("Time Out:",midX,y+25,6,F,grey);
-    if(!s) continue;
-    // filled values
-    txt(s.bobtail?"Bobtail":(s.trailer||""),xs[0]+3,y+18,7,B);
-    if(s.status==="load")  check(xs[1]+cols[1][1]/2, y+16);
-    if(s.status==="empty") check(xs[2]+cols[2][1]/2, y+16);
-    if(s.status==="load"){ const gi=grid.find(g=>g[0]===s.fuel);
-      if(gi){ const w=F.widthOfTextAtSize(gi[0],5.5);
-        pg.drawEllipse({x:gi[1]+w/2,y:T(gi[2]+9.5),xScale:w/2+3.5,yScale:5,borderColor:ink,borderWidth:0.7}); } }
-    if(s.status==="load" && s.temp){
-const unit = S.profile?.tempUnit==="F" ? "°F" : "°C";
-ctr(`${s.temp}${unit}`, xs[4], cols[4][1], y+19, 7, B);
-}
 
-    txt(s.company||"",xs[5]+32,y+11,7,B);
-    txt(s.city||"",midX+24,y+11,7,B);
-    txt(fmtT(s.timeIn)||"",xs[5]+42,y+25,7,B);
-    txt(fmtT(s.timeOut)||"",midX+48,y+25,7,B);
-    txt((s.remarks||"").slice(0,40),xs[8]+3,y+13,6.5,B);
-    if((s.remarks||"").length>40) txt(s.remarks.slice(40,80),xs[8]+3,y+23,6.5,B);
+
+  cells.forEach(
+    (c, i) => {
+
+      const y =
+        M + i * 16.5;
+
+      line(
+        lx,
+        y,
+        lx + lw,
+        y,
+        0.5
+      );
+
+      txt(
+        c[0],
+        lx + 3,
+        y + 11,
+        7,
+        B
+      );
+
+      txt(
+        c[1],
+        lx + 70,
+        y + 11,
+        8,
+        F
+      );
+
+    }
+  );
+
+
+  line(
+    lx + lw,
+    M,
+    lx + lw,
+    M + 66,
+    0.5
+  );
+
+  line(
+    lx + 66,
+    M,
+    lx + 66,
+    M + 66,
+    0.4
+  );
+
+
+  ctr(
+    "UNITED BROTHERS TRANSPORT LIMITED",
+    lx + lw,
+    right - (lx + lw) - 160,
+    M + 30,
+    13,
+    B
+  );
+
+
+  const rx = right - 160;
+
+
+  line(
+    rx,
+    M,
+    rx,
+    M + 66,
+    0.5
+  );
+
+  line(
+    rx,
+    M + 33,
+    right,
+    M + 33,
+    0.5
+  );
+
+
+  txt(
+    "NAME",
+    rx + 4,
+    M + 14,
+    7,
+    B
+  );
+
+  txt(
+    pr?.name || "",
+    rx + 4,
+    M + 27,
+    9,
+    F
+  );
+
+
+  txt(
+    "TRUCK #",
+    rx + 4,
+    M + 47,
+    7,
+    B
+  );
+
+  txt(
+    sh.truck,
+    rx + 4,
+    M + 60,
+    9,
+    F
+  );
+
+
+  if(pages > 1) {
+
+    txt(
+      `page ${page}/${pages}`,
+      right - 52,
+      M + 64,
+      6,
+      F,
+      grey
+    );
+
   }
 
-  /* ---- footer ---- */
-  const fTop=tTop+hHdr+rH*10+8, fH=44;
-  const km=(sh.finishKm&&sh.startKm)?(Number(sh.finishKm)-Number(sh.startKm)):"";
-  const fcols=[["TRUCK MILEAGE",150],["REEFER #",70],["HOURS",150],["DRIVER SIGNATURE",130],["DISPATCH APPROVED",tableW-150-70-150-130]];
-  let fx2=M; const fxs=[]; fcols.forEach(c=>{fxs.push(fx2);fx2+=c[1];});
-  box(M,fTop,tableW,fH);
-  fcols.forEach((c,i)=>{ if(i) line(fxs[i],fTop,fxs[i],fTop+fH,0.5); txt(c[0],fxs[i]+3,fTop+9,6.5,B); });
-  // mileage values
-  txt("Start "+(sh.startKm||"—"),fxs[0]+4,fTop+22,7);
-  txt("Finish "+(sh.finishKm||"—"),fxs[0]+4,fTop+32,7);
-  txt("Total "+(km!==""?km+" km":"—"),fxs[0]+4,fTop+42,7,B);
-  txt("— office —",fxs[1]+4,fTop+26,6.5,F,grey);
-  txt("Start / Finish  — office —",fxs[2]+4,fTop+26,6.5,F,grey);
-  txt("(signed on print)",fxs[3]+4,fTop+30,6.5,F,grey);
-  txt("— office —",fxs[4]+4,fTop+26,6.5,F,grey);
 
-  /* ---- note + comments ---- */
-  const nY=fTop+fH+14;
-  txt("NOTE:  FUEL LEVEL FOR ALL REEFERS MUST BE AT A MINIMUM LEVEL OF HALF IF DROPPED IN ANY YARD",M,nY,7,B);
-  txt("COMMENTS",M,nY+18,7,B);
-  line(M+62,nY+18,right,nY+18,0.5);
-}
+  /* TABLE */
+  const tableW =
+    right - M;
 
-async function makeWeekly(monArg){
-  if(!PDFLib){ toast("PDF library still loading…"); return; }
-  const {PDFDocument,StandardFonts,rgb}=PDFLib;
-  const doc=await PDFDocument.create();
-  const F=await doc.embedFont(StandardFonts.Helvetica);
-  const B=await doc.embedFont(StandardFonts.HelveticaBold);
-  const W=612,H=792,pg=doc.addPage([W,H]);
-  const ink=rgb(0.1,0.1,0.09), grey=rgb(0.5,0.5,0.48), shade=rgb(0.91,0.91,0.88);
-  const T=y=>H-y;
-  const txt=(s,x,y,size=11,f=F,c=ink)=>{ if(s==null||s==="")return; pg.drawText(String(s),{x,y:T(y),size,font:f,color:c}); };
-  const ctr=(s,x,w,y,size,f=F,c=ink)=>{ if(s==null||s==="")return; const tw=f.widthOfTextAtSize(String(s),size); txt(s,x+(w-tw)/2,y,size,f,c); };
-  const line=(x1,y1,x2,y2,w=0.6)=>pg.drawLine({start:{x:x1,y:T(y1)},end:{x:x2,y:T(y2)},thickness:w,color:ink});
-  const box=(x,topY,w,h,fill)=>pg.drawRectangle({x,y:T(topY+h),width:w,height:h,borderColor:ink,borderWidth:0.8,color:fill});
 
-  ctr("United Brothers Transport Ltd.",0,W,74,17,B);
-  ctr("Weekly Timesheet",0,W,96,13,F);
+  const cols = [
+    ["TRAILER #", 70],
+    ["LOAD", 26],
+    ["EMPTY", 30],
+    ["FUEL LEVEL", 74],
+    ["TEMP", 30],
+    ["CUSTOMER", 250],
+    ["BILL OF LADING #", 88],
+    [
+      "REMARKS",
+      tableW -
+      70 -
+      26 -
+      30 -
+      74 -
+      30 -
+      250 -
+      88
+    ]
+  ];
 
-  const all=S.past;
-  const mon=monArg?new Date(monArg):mondayOf(new Date()); const to=new Date(mon); to.setDate(mon.getDate()+6);
 
-  // info fields (boxed, like the form)
-  txt("Name:",55,146,12,B);        box(112,132,300,20); txt(S.profile.name,120,146,12,F);
-  txt("Corporation:",55,180,12,B); box(140,166,272,20); txt(S.profile.corp||"",148,180,12,F);
-  txt("Date from:",55,214,12,B);   box(128,200,110,20); txt(todayStr(mon),136,214,11,F);
-  txt("Date to:",300,214,12,B);    box(360,200,110,20); txt(todayStr(to),368,214,11,F);
+  const xs = [];
 
-  // table columns: [x, width]
-  const day=[55,95], tin=[158,145], tout=[311,145], tot=[464,90];
-  const hdrTop=262, rowTop=286, rH=34;
-  // header row (shaded)
-  box(tin[0],hdrTop,tin[1],22,shade);  ctr("Time In",tin[0],tin[1],hdrTop+15,11,B);
-  box(tout[0],hdrTop,tout[1],22,shade); ctr("Time Out",tout[0],tout[1],hdrTop+15,11,B);
-  box(tot[0],hdrTop,tot[1],22,shade);   ctr("Total Hours",tot[0],tot[1],hdrTop+15,9.5,B);
+  let cx = M;
 
-  const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-  let week=0;
-  days.forEach((dname,i)=>{
-    const top=rowTop+i*rH, mid=top+rH/2+4;
-    const d=new Date(mon); d.setDate(mon.getDate()+i);
-    const sh=all.find(s=>s.date===todayStr(d)); const h=sh?diffH(sh.startTime,sh.finishTime):0; week+=h;
-    box(day[0],top+3,day[1],rH-8);   txt(dname,day[0]+8,mid,11,B);
-    box(tin[0],top+3,tin[1],rH-8);   txt(sh?fmtT(sh.startTime):"",tin[0]+10,mid,12,F);  txt("am / pm",tin[0]+tin[1]-50,mid,9,F,grey);
-    box(tout[0],top+3,tout[1],rH-8); txt(sh?fmtT(sh.finishTime):"",tout[0]+10,mid,12,F); txt("am / pm",tout[0]+tout[1]-50,mid,9,F,grey);
-    box(tot[0],top+3,tot[1],rH-8);   ctr(h?hDec(h):"",tot[0],tot[1],mid,12,F);
+
+  cols.forEach(c => {
+
+    xs.push(cx);
+
+    cx += c[1];
+
   });
 
-  // week total
-  const wTop=rowTop+7*rH+12;
-  txt("Week Total",tout[0]+tout[1]-96,wTop+16,12,B);
-  box(tot[0],wTop,tot[1],24,shade); ctr(hDec(week)+" h",tot[0],tot[1],wTop+16,12,B);
 
-  // comments
-  const cY=wTop+64;
-  txt("Comments:",55,cY,12,B);
-  line(130,cY+2,557,cY+2,0.6); line(55,cY+28,557,cY+28,0.6); line(55,cY+54,557,cY+54,0.6);
+  const tTop = M + 72;
+  const hHdr = 18;
+  const rH = 30;
 
-  const bytes=await doc.save();
-  await sharePdf(bytes, `UBT_Timesheet_${todayStr(mon)}.pdf`);
+
+  const check =
+    (
+      cxp,
+      cyTop
+    ) => {
+
+      line(
+        cxp - 4,
+        cyTop,
+        cxp - 1,
+        cyTop + 3,
+        1.2
+      );
+
+      line(
+        cxp - 1,
+        cyTop + 3,
+        cxp + 5,
+        cyTop - 4,
+        1.2
+      );
+
+    };
+
+
+  box(
+    M,
+    tTop,
+    tableW,
+    hHdr
+  );
+
+
+  cols.forEach(
+    (c, i) => {
+
+      if(i) {
+
+        line(
+          xs[i],
+          tTop,
+          xs[i],
+          tTop + hHdr + rH * 10,
+          0.5
+        );
+
+      }
+
+
+      ctr(
+        c[0],
+        xs[i],
+        c[1],
+        tTop + 12,
+        c[1] < 40
+          ? 5.5
+          : 6.5,
+        B
+      );
+
+    }
+  );
+
+
+  for(let r = 0; r < 10; r++) {
+
+    const y =
+      tTop +
+      hHdr +
+      r * rH;
+
+
+    line(
+      M,
+      y + rH,
+      right,
+      y + rH,
+      0.5
+    );
+
+
+    const s =
+      rows[r];
+
+
+    const fx =
+      xs[3] + 5;
+
+    const fy =
+      y + 4;
+
+
+    const grid = [
+      ["Empty", fx, fy],
+      ["Qtr", fx + 36, fy],
+      ["Half", fx, fy + 13],
+      ["Full", fx + 36, fy + 13]
+    ];
+
+
+    grid.forEach(g =>
+      txt(
+        g[0],
+        g[1],
+        g[2] + 12,
+        5.5,
+        F,
+        grey
+      )
+    );
+
+
+    const midX =
+      xs[5] +
+      cols[5][1] / 2;
+
+
+    txt(
+      "Name:",
+      xs[5] + 3,
+      y + 11,
+      6,
+      F,
+      grey
+    );
+
+
+    txt(
+      "City:",
+      midX,
+      y + 11,
+      6,
+      F,
+      grey
+    );
+
+
+    txt(
+      "Time In:",
+      xs[5] + 3,
+      y + 25,
+      6,
+      F,
+      grey
+    );
+
+
+    txt(
+      "Time Out:",
+      midX,
+      y + 25,
+      6,
+      F,
+      grey
+    );
+
+
+    if(!s) continue;
+
+
+    txt(
+      s.bobtail
+        ? "Bobtail"
+        : (s.trailer || ""),
+      xs[0] + 3,
+      y + 18,
+      7,
+      B
+    );
+
+
+    if(s.status === "load") {
+
+      check(
+        xs[1] +
+        cols[1][1] / 2,
+        y + 16
+      );
+
+    }
+
+
+    if(s.status === "empty") {
+
+      check(
+        xs[2] +
+        cols[2][1] / 2,
+        y + 16
+      );
+
+    }
+
+
+    if(
+      s.status === "load"
+    ) {
+
+      const gi =
+        grid.find(
+          g => g[0] === s.fuel
+        );
+
+
+      if(gi) {
+
+        const w =
+          F.widthOfTextAtSize(
+            gi[0],
+            5.5
+          );
+
+
+        pg.drawEllipse({
+          x: gi[1] + w / 2,
+          y: T(gi[2] + 9.5),
+          xScale: w / 2 + 3.5,
+          yScale: 5,
+          borderColor: ink,
+          borderWidth: 0.7
+        });
+
+      }
+
+    }
+
+
+    if(
+      s.status === "load" &&
+      s.temp
+    ) {
+
+      ctr(
+        `${s.temp}${tempSuffix()}`,
+        xs[4],
+        cols[4][1],
+        y + 19,
+        7,
+        B
+      );
+
+    }
+
+
+    txt(
+      s.company || "",
+      xs[5] + 32,
+      y + 11,
+      7,
+      B
+    );
+
+
+    txt(
+      s.city || "",
+      midX + 24,
+      y + 11,
+      7,
+      B
+    );
+
+
+    txt(
+      fmtT(s.timeIn) || "",
+      xs[5] + 42,
+      y + 25,
+      7,
+      B
+    );
+
+
+    txt(
+      fmtT(s.timeOut) || "",
+      midX + 48,
+      y + 25,
+      7,
+      B
+    );
+
+
+    txt(
+      (s.remarks || "").slice(
+        0,
+        40
+      ),
+      xs[7] + 3,
+      y + 13,
+      6.5,
+      B
+    );
+
+
+    if(
+      (s.remarks || "").length > 40
+    ) {
+
+      txt(
+        s.remarks.slice(
+          40,
+          80
+        ),
+        xs[7] + 3,
+        y + 23,
+        6.5,
+        B
+      );
+
+    }
+
+  }
+
+
+  /* FOOTER */
+  const fTop =
+    tTop +
+    hHdr +
+    rH * 10 +
+    8;
+
+  const fH = 44;
+
+
+  const km =
+    sh.finishKm &&
+    sh.startKm
+      ? Number(sh.finishKm) -
+        Number(sh.startKm)
+      : "";
+
+
+  const fcols = [
+    ["TRUCK MILEAGE", 150],
+    ["REEFER #", 70],
+    ["HOURS", 150],
+    ["DRIVER SIGNATURE", 130],
+    [
+      "DISPATCH APPROVED",
+      tableW -
+      150 -
+      70 -
+      150 -
+      130
+    ]
+  ];
+
+
+  let fx2 = M;
+  const fxs = [];
+
+
+  fcols.forEach(c => {
+
+    fxs.push(fx2);
+
+    fx2 += c[1];
+
+  });
+
+
+  box(
+    M,
+    fTop,
+    tableW,
+    fH
+  );
+
+
+  fcols.forEach(
+    (c, i) => {
+
+      if(i) {
+
+        line(
+          fxs[i],
+          fTop,
+          fxs[i],
+          fTop + fH,
+          0.5
+        );
+
+      }
+
+
+      txt(
+        c[0],
+        fxs[i] + 3,
+        fTop + 9,
+        6.5,
+        B
+      );
+
+    }
+  );
+
+
+  txt(
+    "Start " +
+    (sh.startKm || "—"),
+    fxs[0] + 4,
+    fTop + 22,
+    7
+  );
+
+
+  txt(
+    "Finish " +
+    (sh.finishKm || "—"),
+    fxs[0] + 4,
+    fTop + 32,
+    7
+  );
+
+
+  txt(
+    "Total " +
+    (
+      km !== ""
+        ? km + " km"
+        : "—"
+    ),
+    fxs[0] + 4,
+    fTop + 42,
+    7,
+    B
+  );
+
+
+  txt(
+    "— office —",
+    fxs[1] + 4,
+    fTop + 26,
+    6.5,
+    F,
+    grey
+  );
+
+
+  txt(
+    "Start / Finish  — office —",
+    fxs[2] + 4,
+    fTop + 26,
+    6.5,
+    F,
+    grey
+  );
+
+
+  txt(
+    "(signed on print)",
+    fxs[3] + 4,
+    fTop + 30,
+    6.5,
+    F,
+    grey
+  );
+
+
+  txt(
+    "— office —",
+    fxs[4] + 4,
+    fTop + 26,
+    6.5,
+    F,
+    grey
+  );
+
+
+  const nY =
+    fTop +
+    fH +
+    14;
+
+
+  txt(
+    "NOTE:  FUEL LEVEL FOR ALL REEFERS MUST BE AT A MINIMUM LEVEL OF HALF IF DROPPED IN ANY YARD",
+    M,
+    nY,
+    7,
+    B
+  );
+
+
+  txt(
+    "COMMENTS",
+    M,
+    nY + 18,
+    7,
+    B
+  );
+
+
+  line(
+    M + 62,
+    nY + 18,
+    right,
+    nY + 18,
+    0.5
+  );
 }
 
+
+/* =========================================================
+   WEEKLY PDF
+========================================================= */
+async function makeWeekly(monArg) {
+
+  if(!PDFLib) {
+    toast(
+      "PDF library still loading…"
+    );
+    return;
+  }
+
+
+  const {
+    PDFDocument,
+    StandardFonts,
+    rgb
+  } = PDFLib;
+
+
+  const doc =
+    await PDFDocument.create();
+
+
+  const F =
+    await doc.embedFont(
+      StandardFonts.Helvetica
+    );
+
+  const B =
+    await doc.embedFont(
+      StandardFonts.HelveticaBold
+    );
+
+
+  const W = 612;
+  const H = 792;
+
+
+  const pg =
+    doc.addPage([
+      W,
+      H
+    ]);
+
+
+  const ink =
+    rgb(
+      0.1,
+      0.1,
+      0.09
+    );
+
+  const grey =
+    rgb(
+      0.5,
+      0.5,
+      0.48
+    );
+
+  const shade =
+    rgb(
+      0.91,
+      0.91,
+      0.88
+    );
+
+
+  const T =
+    y => H - y;
+
+
+  const txt =
+    (
+      s,
+      x,
+      y,
+      size = 11,
+      f = F,
+      c = ink
+    ) => {
+
+      if(
+        s == null ||
+        s === ""
+      ) return;
+
+      pg.drawText(
+        String(s),
+        {
+          x,
+          y: T(y),
+          size,
+          font: f,
+          color: c
+        }
+      );
+    };
+
+
+  const ctr =
+    (
+      s,
+      x,
+      w,
+      y,
+      size,
+      f = F,
+      c = ink
+    ) => {
+
+      if(
+        s == null ||
+        s === ""
+      ) return;
+
+      const tw =
+        f.widthOfTextAtSize(
+          String(s),
+          size
+        );
+
+
+      txt(
+        s,
+        x + (w - tw) / 2,
+        y,
+        size,
+        f,
+        c
+      );
+    };
+
+
+  const line =
+    (
+      x1,
+      y1,
+      x2,
+      y2,
+      w = 0.6
+    ) =>
+      pg.drawLine({
+        start: {
+          x: x1,
+          y: T(y1)
+        },
+        end: {
+          x: x2,
+          y: T(y2)
+        },
+        thickness: w,
+        color: ink
+      });
+
+
+  const box =
+    (
+      x,
+      topY,
+      w,
+      h,
+      fill
+    ) =>
+      pg.drawRectangle({
+        x,
+        y: T(topY + h),
+        width: w,
+        height: h,
+        borderColor: ink,
+        borderWidth: 0.8,
+        color: fill
+      });
+
+
+  ctr(
+    "United Brothers Transport Ltd.",
+    0,
+    W,
+    74,
+    17,
+    B
+  );
+
+
+  ctr(
+    "Weekly Timesheet",
+    0,
+    W,
+    96,
+    13,
+    F
+  );
+
+
+  const all = S.past;
+
+
+  const mon =
+    monArg
+      ? new Date(monArg)
+      : mondayOf(new Date());
+
+
+  const to =
+    new Date(mon);
+
+
+  to.setDate(
+    mon.getDate() + 6
+  );
+
+
+  txt(
+    "Name:",
+    55,
+    146,
+    12,
+    B
+  );
+
+  box(
+    112,
+    132,
+    300,
+    20
+  );
+
+  txt(
+    S.profile?.name || "",
+    120,
+    146,
+    12,
+    F
+  );
+
+
+  txt(
+    "Corporation:",
+    55,
+    180,
+    12,
+    B
+  );
+
+  box(
+    140,
+    166,
+    272,
+    20
+  );
+
+  txt(
+    S.profile?.corp || "",
+    148,
+    180,
+    12,
+    F
+  );
+
+
+  txt(
+    "Date from:",
+    55,
+    214,
+    12,
+    B
+  );
+
+  box(
+    128,
+    200,
+    110,
+    20
+  );
+
+  txt(
+    todayStr(mon),
+    136,
+    214,
+    11,
+    F
+  );
+
+
+  txt(
+    "Date to:",
+    300,
+    214,
+    12,
+    B
+  );
+
+  box(
+    360,
+    200,
+    110,
+    20
+  );
+
+  txt(
+    todayStr(to),
+    368,
+    214,
+    11,
+    F
+  );
+
+
+  const day = [55, 95];
+  const tin = [158, 145];
+  const tout = [311, 145];
+  const tot = [464, 90];
+
+
+  const hdrTop = 262;
+  const rowTop = 286;
+  const rH = 34;
+
+
+  box(
+    tin[0],
+    hdrTop,
+    tin[1],
+    22,
+    shade
+  );
+
+  ctr(
+    "Time In",
+    tin[0],
+    tin[1],
+    hdrTop + 15,
+    11,
+    B
+  );
+
+
+  box(
+    tout[0],
+    hdrTop,
+    tout[1],
+    22,
+    shade
+  );
+
+  ctr(
+    "Time Out",
+    tout[0],
+    tout[1],
+    hdrTop + 15,
+    11,
+    B
+  );
+
+
+  box(
+    tot[0],
+    hdrTop,
+    tot[1],
+    22,
+    shade
+  );
+
+  ctr(
+    "Total Hours",
+    tot[0],
+    tot[1],
+    hdrTop + 15,
+    9.5,
+    B
+  );
+
+
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+  ];
+
+
+  let week = 0;
+
+
+  days.forEach(
+    (dname, i) => {
+
+      const top =
+        rowTop +
+        i * rH;
+
+      const mid =
+        top +
+        rH / 2 +
+        4;
+
+
+      const d =
+        new Date(mon);
+
+      d.setDate(
+        mon.getDate() + i
+      );
+
+
+      const sh =
+        all.find(
+          s =>
+            s.date ===
+            todayStr(d)
+        );
+
+
+      const h =
+        sh
+          ? diffH(
+              sh.startTime,
+              sh.finishTime
+            )
+          : 0;
+
+
+      week += h;
+
+
+      box(
+        day[0],
+        top + 3,
+        day[1],
+        rH - 8
+      );
+
+      txt(
+        dname,
+        day[0] + 8,
+        mid,
+        11,
+        B
+      );
+
+
+      box(
+        tin[0],
+        top + 3,
+        tin[1],
+        rH - 8
+      );
+
+      txt(
+        sh
+          ? fmtT(sh.startTime)
+          : "",
+        tin[0] + 10,
+        mid,
+        12,
+        F
+      );
+
+
+      box(
+        tout[0],
+        top + 3,
+        tout[1],
+        rH - 8
+      );
+
+      txt(
+        sh
+          ? fmtT(sh.finishTime)
+          : "",
+        tout[0] + 10,
+        mid,
+        12,
+        F
+      );
+
+
+      box(
+        tot[0],
+        top + 3,
+        tot[1],
+        rH - 8
+      );
+
+      ctr(
+        h ? hDec(h) : "",
+        tot[0],
+        tot[1],
+        mid,
+        12,
+        F
+      );
+
+    }
+  );
+
+
+  const wTop =
+    rowTop +
+    7 * rH +
+    12;
+
+
+  txt(
+    "Week Total",
+    tout[0] +
+    tout[1] -
+    96,
+    wTop + 16,
+    12,
+    B
+  );
+
+
+  box(
+    tot[0],
+    wTop,
+    tot[1],
+    24,
+    shade
+  );
+
+
+  ctr(
+    hDec(week) + " h",
+    tot[0],
+    tot[1],
+    wTop + 16,
+    12,
+    B
+  );
+
+
+  const cY =
+    wTop + 64;
+
+
+  txt(
+    "Comments:",
+    55,
+    cY,
+    12,
+    B
+  );
+
+
+  line(
+    130,
+    cY + 2,
+    557,
+    cY + 2,
+    0.6
+  );
+
+  line(
+    55,
+    cY + 28,
+    557,
+    cY + 28,
+    0.6
+  );
+
+  line(
+    55,
+    cY + 54,
+    557,
+    cY + 54,
+    0.6
+  );
+
+
+  const bytes =
+    await doc.save();
+
+
+  await sharePdf(
+    bytes,
+    `UBT_Timesheet_${todayStr(mon)}.pdf`
+  );
+}
+
+
+/* =========================================================
+   INITIAL RENDER
+========================================================= */
 render();
+
 </script>
+```
+
 </body>
 </html>
