@@ -397,7 +397,7 @@ function stopFieldsHtml(d){
   </div>
   ${d.status==="load"?`
   <div class="field"><div class="lbl">Fuel level</div><div class="segs">${fuel}</div></div>
-  <div class="field"><div class="lbl">Temperature (°C)</div><input id="temp" inputmode="numeric" placeholder="e.g. -18" value="${esc(d.temp)}"></div>`:""}
+  <div class="field"><div class="lbl">Temperature (°C)</div><input id="temp" type="text" inputmode="decimal" placeholder="e.g. -10">value="${esc(d.temp)}"></div>`:""}
   <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>`;
 }
 function vShift(){
