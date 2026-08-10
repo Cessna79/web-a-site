@@ -1060,7 +1060,11 @@ function drawRunPage(doc,F,B,rgb,sh,pr,rows,total,page,pages){
     if(s.status==="load"){ const gi=grid.find(g=>g[0]===s.fuel);
       if(gi){ const w=F.widthOfTextAtSize(gi[0],5.5);
         pg.drawEllipse({x:gi[1]+w/2,y:T(gi[2]+9.5),xScale:w/2+3.5,yScale:5,borderColor:ink,borderWidth:0.7}); } }
-    if(s.status==="load"&&s.temp) ctr(s.temp,xs[4],cols[4][1],y+19,7,B);
+    if(s.status==="load" && s.temp){
+const unit = S.profile?.tempUnit==="F" ? "°F" : "°C";
+ctr(`${s.temp}${unit}`, xs[4], cols[4][1], y+19, 7, B);
+}
+
     txt(s.company||"",xs[5]+32,y+11,7,B);
     txt(s.city||"",midX+24,y+11,7,B);
     txt(fmtT(s.timeIn)||"",xs[5]+42,y+25,7,B);
