@@ -2633,6 +2633,33 @@ if(a === "tempkey") {
     return;
   }
 
+  
+/* Stop workflow */
+if(a==="stopNext"){
+  syncLive();
+
+  if(!S.shift) return;
+
+  S.shift.uiStep=1;
+  persist();
+  render();
+
+  return;
+}
+
+if(a==="stopBack"){
+  syncLive();
+
+  if(!S.shift) return;
+
+  S.shift.uiStep=0;
+  persist();
+  render();
+
+  return;
+}
+
+
 
 
   /* Depart */
