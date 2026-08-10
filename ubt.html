@@ -314,6 +314,7 @@ app.innerHTML=({
   week:vWeek,
   sheets:vSheets
 }[S.view]||(()=>""))();
+  
   // bottom tab bar
   const tb=document.getElementById("tabbar");
   const showTabs=topLevel.includes(S.view);
@@ -448,6 +449,64 @@ const current = sh.stops && sh.stops.length
     <button class="btn dark mt" data-act="returnToYard">Return to yard &amp; end</button>
     ${listBlock}`;
 }
+
+function vSummary(){
+  const sh=S.shift;
+
+  if(!sh){
+    return `
+      <div class="card">
+        <div class="lbl">Today's summary</div>
+        <div class="muted mt">No active shift today.</div>
+      </div>`;
+  }
+
+  const total=diffH(sh.startTime,sh.finishTime||Date.now());
+  const stops=sh.stops||[];
+
+  const list=stops.map((s,i)=>stopRowHtml(s,i)).join("");
+
+  return `
+    <div class="card">
+      <div class="lbl">Today's summary</div>
+
+      <div class="row">
+        <span class="k">Truck</span>
+        <span class="v">${esc(sh.truck)||"—"}</span>
+      </div>
+
+      <div class="row">
+        <span class="k">Start</span>
+        <span class="v mono">${fmtT(sh.startTime)||"--:--"}</span>
+      </div>
+
+      <div class="row">
+        <span class="k">Finish</span>
+        <span class="v mono">${sh.finishTime?fmtT(sh.finishTime):"--:--"}</span>
+      </div>
+
+      <div class="row">
+        <span class="k">Hours</span>
+        <span class="v mono">${hDec(total)||"0.00"} h</span>
+      </div>
+
+      <div class="row">
+        <span class="k">Stops</span>
+        <span class="v">${stops.length}</span>
+      </div>
+    </div>
+
+    <div class="lbl" style="margin:20px 2px 8px">
+      Today's stops
+    </div>
+
+    ${list || `
+      <div class="card muted">
+        No stops recorded yet.
+      </div>
+    `}
+  `;
+}  
 function vEditStop(){
   const d=S.draft;
   const fuel=FUEL.map(f=>`<div class="seg ${d.fuel===f?"on":""}" style="${d.fuel===f?"background:var(--go)":""}" data-act="fuel" data-f="${f}">${f}</div>`).join("");
@@ -686,10 +745,21 @@ document.addEventListener("click", e=>{
   const t=e.target.closest("[data-act]"); if(!t) return;
   const a=t.dataset.act;
   if(a==="go"){ go(t.dataset.v); return; }
-  if(a==="tab"){ const tab=t.dataset.tab;
-    if(S.view==="shift"||S.view==="editStop") syncLive();
-    if(tab==="shift") go(S.shift&&!S.shift.done?"shift":"home"); else go(tab);
-    return; }
+  if(a==="tab"){
+  const tab=t.dataset.tab;
+
+  if(S.view==="shift"||S.view==="summary"||S.view==="editStop"){
+    syncLive();
+  }
+
+  if(tab==="shift"){
+    go(S.shift&&!S.shift.done?"shift":"home");
+  }else{
+    go(tab);
+  }
+
+  return;
+}
   if(a==="saveProfile"){
     S.profile={ name:(document.getElementById("pn").value.trim()||"Driver"),
       corp:document.getElementById("pc").value.trim(),
