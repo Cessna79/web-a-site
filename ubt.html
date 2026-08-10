@@ -143,15 +143,6 @@
     <span>Sheets</span>
   </button>
 
-   <button class="tab" data-act="tab" data-tab="profile">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-      stroke="currentColor" stroke-width="2" stroke-linecap="round"
-      stroke-linejoin="round">
-      <circle cx="12" cy="8" r="4"/>
-      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>
-    </svg>
-    <span>Profile</span>
-  </button> 
 </nav>
 <div id="toast" class="toast"></div>
 
@@ -542,21 +533,27 @@ function render() {
               )
         );
 
-  const titles={
-setup:"Set up profile",
-home:"Shift",
-shift:"On duty",
-editStop:editTitle,
-final:"End of shift",
-sheet:"Daily run sheet",
-week:"Weekly timesheet",
-sheets:"Saved sheets",
-profile:"Profile",
-};
+  const titles = {
+    setup: "Set up profile",
+    home: "Shift",
+    shift: "On duty",
+    summary: "Summary",
+    editStop: editTitle,
+    final: "End of shift",
+    sheet: "Daily run sheet",
+    week: "Weekly timesheet",
+    sheets: "Saved sheets"
+  };
 
   scr.textContent = titles[S.view] || "";
 
- const topLevel=["home","shift","summary","week","sheets","profile"];
+  const topLevel = [
+    "home",
+    "shift",
+    "summary",
+    "week",
+    "sheets"
+  ];
 
   if(["editStop", "final", "sheet"].includes(S.view)) {
 
@@ -593,9 +590,8 @@ profile:"Profile",
     final: vFinal,
     sheet: vSheet,
     week: vWeek,
-    sheets: vSheets,
-    profile: vProfile
-    }[S.view];
+    sheets: vSheets
+  }[S.view];
 
 
   try {
@@ -653,7 +649,6 @@ profile:"Profile",
         "active",
         S.view === "sheets"
       );
-    tb.querySelector('[data-tab="profile"]').classList.toggle("active", S.view==="profile");
   }
 }
 
@@ -730,52 +725,6 @@ function vSetup() {
   `;
 }
 
-function vProfile(){
-  const p=S.profile||{};
-  const u=p.tempUnit||"C";
-
-  return `
-    <div class="card">
-
-      <div class="field">
-        <div class="lbl">Driver name</div>
-        <input id="pn" value="${esc(p.name||"")}">
-      </div>
-
-      <div class="field">
-        <div class="lbl">Corporation</div>
-        <input id="pc" value="${esc(p.corp||"")}">
-      </div>
-
-      <div class="field">
-        <div class="lbl">Home base</div>
-        <input id="ph" value="${esc(p.homeBase||"")}">
-      </div>
-
-      <div class="field">
-        <div class="lbl">Temperature unit</div>
-        <div class="segs">
-          <div class="seg ${u==="C"?"on":""}"
-            style="${u==="C"?"background:var(--go)":""}"
-            data-act="tempUnit" data-unit="C">
-            °C Celsius
-          </div>
-
-          <div class="seg ${u==="F"?"on":""}"
-            style="${u==="F"?"background:var(--go)":""}"
-            data-act="tempUnit" data-unit="F">
-            °F Fahrenheit
-          </div>
-        </div>
-      </div>
-
-      <button class="btn go" data-act="saveProfile">
-        Save profile
-      </button>
-
-    </div>
-  `;
-}
 
 /* =========================================================
    HOME
@@ -944,95 +893,147 @@ function stopRowHtml(s, i) {
 }
 
 
+/* =========================================================
+   STOP FIELDS
+========================================================= */
 function stopFieldsHtml(d) {
-const fuel = FUEL.map(f =>
-`<div class="seg ${d.fuel === f ? "on" : ""}"
-      style="${d.fuel === f ? "background:var(--go)" : ""}"
-      data-act="fuel" data-f="${f}">${f}</div>`
-).join("");
 
-return ` <div class="field"> <div class="lbl">Trailer</div>
-<input id="trailer"
-placeholder="Trailer #"
-value="${esc(d.trailer || "")}"
-${d.bobtail ? "disabled" : ""}> </div>
+  const fuel = FUEL.map(f =>
+    `<div
+      class="seg ${d.fuel === f ? "on" : ""}"
+      style="${
+        d.fuel === f
+          ? "background:var(--go)"
+          : ""
+      }"
+      data-act="fuel"
+      data-f="${f}">
+      ${f}
+    </div>`
+  ).join("");
 
-```
-<div class="field">
-  <div class="lbl">Bobtail</div>
-  <div class="segs">
-    <div class="seg ${d.bobtail ? "on" : ""}"
-      style="${d.bobtail ? "background:var(--amber)" : ""}"
-      data-act="bobtail">Bobtail</div>
-  </div>
-</div>
 
-<div class="field">
-  <div class="lbl">Load status</div>
-  <div class="segs">
-    <div class="seg ${d.status === "load" ? "on" : ""}"
-      style="${d.status === "load" ? "background:var(--blue)" : ""}"
-      data-act="status" data-s="load">Loaded</div>
+  return `
+    <div class="field">
 
-    <div class="seg ${d.status === "empty" ? "on" : ""}"
-      style="${d.status === "empty" ? "background:var(--mid)" : ""}"
-      data-act="status" data-s="empty">Empty</div>
-  </div>
-</div>
+      <div class="lbl">Trailer</div>
 
-${d.status === "load" ? `
-  <div class="field">
-    <div class="lbl">Fuel level</div>
-    <div class="segs">${fuel}</div>
-  </div>
+      <input
+        id="trailer"
+        placeholder="Trailer #"
+        value="${esc(d.trailer || "")}"
+        ${d.bobtail ? "disabled" : ""}>
 
-  <div class="field">
-    <div class="lbl">${tempLabel()}</div>
-
-    <input id="temp"
-      type="text"
-      inputmode="none"
-      autocomplete="off"
-      readonly
-      placeholder="${tempUnit() === "F" ? "e.g. 14" : "e.g. -10"}"
-      value="${esc(d.temp || "")}">
-
-    <div id="tempPad" style="
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
-      margin-top:8px;
-    ">
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="1">1</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="2">2</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="3">3</button>
-
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="4">4</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="5">5</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="6">6</button>
-
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="7">7</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="8">8</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="9">9</button>
-
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="-">−</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="0">0</button>
-      <button type="button" class="seg" data-act="tempkey" data-tempkey="back">⌫</button>
     </div>
-  </div>
-` : ""}
 
-<div class="field">
-  <div class="lbl">Remarks</div>
-  <textarea id="remarks"
-    placeholder="What you did here, or reason for delay…">${esc(d.remarks || "")}</textarea>
-</div>
-```
 
-`;
+    <div class="field">
+
+      <div class="lbl">Bobtail</div>
+
+      <div class="segs">
+
+        <div
+          class="seg ${d.bobtail ? "on" : ""}"
+          style="${
+            d.bobtail
+              ? "background:var(--amber)"
+              : ""
+          }"
+          data-act="bobtail">
+          Bobtail
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="field">
+
+      <div class="lbl">Load status</div>
+
+      <div class="segs">
+
+        <div
+          class="seg ${d.status === "load" ? "on" : ""}"
+          style="${
+            d.status === "load"
+              ? "background:var(--blue)"
+              : ""
+          }"
+          data-act="status"
+          data-s="load">
+          Loaded
+        </div>
+
+        <div
+          class="seg ${d.status === "empty" ? "on" : ""}"
+          style="${
+            d.status === "empty"
+              ? "background:var(--mid)"
+              : ""
+          }"
+          data-act="status"
+          data-s="empty">
+          Empty
+        </div>
+
+      </div>
+
+    </div>
+
+
+    ${
+      d.status === "load"
+        ? `
+          <div class="field">
+
+            <div class="lbl">Fuel level</div>
+
+            <div class="segs">
+              ${fuel}
+            </div>
+
+          </div>
+
+
+          <div class="field">
+
+            <div class="lbl">
+              ${tempLabel()}
+            </div>
+
+            <input
+              id="temp"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="${
+                tempUnit() === "F"
+                  ? "e.g. 14"
+                  : "e.g. -10"
+              }"
+              value="${esc(d.temp || "")}">
+
+          </div>
+        `
+        : ""
+    }
+
+
+    <div class="field">
+
+      <div class="lbl">Remarks</div>
+
+      <textarea
+        id="remarks"
+        placeholder="What you did here, or reason for delay…"
+      >${esc(d.remarks || "")}</textarea>
+
+    </div>
+  `;
 }
-
-
 
 
 /* =========================================================
@@ -2207,41 +2208,6 @@ function syncLive() {
    ACTIONS
 ========================================================= */
 document.addEventListener("click", e => {
-
-  if(a==="tempkey"){
-  const key=t.dataset.tempkey;
-  const o=activeStop();
-  const input=document.getElementById("temp");
-
-  if(!o || !input) return;
-
-  let v=String(o.temp||"");
-
-  if(key==="back"){
-    v=v.slice(0,-1);
-  }else if(key==="-"){
-    if(v.startsWith("-")){
-      v=v.slice(1);
-    }else if(v){
-      v="-"+v;
-    }else{
-      v="-";
-    }
-  }else{
-    if(v==="-" && key==="0"){
-      v="-0";
-    }else if(v==="0"){
-      v=key;
-    }else{
-      v+=key;
-    }
-  }
-
-  o.temp=v;
-  input.value=v;
-  persist();
-  return;
-}
 
   const t =
     e.target.closest("[data-act]");
