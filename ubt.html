@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -141,7 +142,7 @@ function round15(ms){
   d.setSeconds(0,0);
 
   const minutes = d.getMinutes();
-  const roundedMinutes = Math.round(minutes / 5) * 5;
+  const roundedMinutes = Math.round(minutes / 15) * 15;
 
   if(roundedMinutes === 60){
     d.setHours(d.getHours() + 1);
