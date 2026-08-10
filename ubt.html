@@ -915,8 +915,8 @@ function stopRowHtml(s, i) {
                 : "—"
           }
           ${
-            s.status === "load" && s.temp
-              ? ` · ${esc(s.temp)}${tempSuffix()}`
+            s.status === "load"
+              ? (s.dry ? " · Dry" : (s.temp ? ` · ${esc(s.temp)}${tempSuffix()}` : ""))
               : ""
           }
         </div>
@@ -946,6 +946,31 @@ function stopRowHtml(s, i) {
 /* =========================================================
    STOP FIELDS
 ========================================================= */
+function reeferToggleHtml(d){
+  return `
+    <div class="field">
+      <div class="lbl">Reefer</div>
+      <div class="segs">
+        <div class="seg ${!d.dry?"on":""}" style="${!d.dry?"background:var(--blue)":""}" data-act="reefer" data-r="on">Reefer on</div>
+        <div class="seg ${d.dry?"on":""}" style="${d.dry?"background:var(--mid)":""}" data-act="reefer" data-r="dry">Dry (reefer off)</div>
+      </div>
+    </div>`;
+}
+function tempFieldHtml(d){
+  if(d.dry){
+    return `<div class="muted" style="margin:0 2px 14px">Dry load — reefer off, no temperature recorded.</div>`;
+  }
+  const keys=["1","2","3","4","5","6","7","8","9","-","0","back"];
+  const pad=keys.map(k=>`<button type="button" class="seg" data-act="tempkey" data-tempkey="${k}">${k==="-"?"−":k==="back"?"⌫":k}</button>`).join("");
+  return `
+    <div class="field">
+      <div class="lbl">${tempLabel()}</div>
+      <input id="temp" type="text" inputmode="none" autocomplete="off" readonly placeholder="e.g. -10" value="${esc(d.temp||"")}">
+      <div id="tempPad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+        ${pad}
+      </div>
+    </div>`;
+}
 function stopFieldsHtml(d) {
 
   const fuel = FUEL.map(f =>
@@ -1048,71 +1073,9 @@ function stopFieldsHtml(d) {
           </div>
 
 
-          <div class="field">
+          ${reeferToggleHtml(d)}
 
-            <div class="lbl">
-              ${tempLabel()}
-            </div>
-
-            <input
-  id="temp"
-  type="text"
-  inputmode="none"
-  autocomplete="off"
-  readonly
-  placeholder="${
-    tempUnit() === "F"
-      ? "e.g. -10"
-      : "e.g. -10"
-  }"
-  value="${esc(d.temp || "")}">
-
-  <div id="tempPad" style="
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin-top:8px;
-">
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="1">1</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="2">2</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="3">3</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="4">4</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="5">5</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="6">6</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="7">7</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="8">8</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="9">9</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="-">−</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="0">0</button>
-
-  <button type="button" class="seg"
-    data-act="tempkey" data-tempkey="back">⌫</button>
-
-</div>
-
-          </div>
+          ${tempFieldHtml(d)}
         `
         : ""
     }
@@ -2509,6 +2472,7 @@ document.addEventListener("click", e => {
       if(s === "empty") {
         o.fuel = "";
         o.temp = "";
+        o.dry = false;
       }
 
     }
@@ -2532,6 +2496,18 @@ document.addEventListener("click", e => {
 
     render();
 
+    return;
+  }
+
+  /* Reefer on / dry */
+  if(a === "reefer") {
+    syncLive();
+    const o = activeStop();
+    if(o) {
+      o.dry = (t.dataset.r === "dry");
+      if(o.dry) o.temp = "";
+    }
+    render();
     return;
   }
 
@@ -3875,7 +3851,11 @@ function drawRunPage(
     }
 
 
-    if(
+    if(s.status === "load" && s.dry){
+
+      ctr("Dry", xs[4], cols[4][1], y + 19, 7, B);
+
+    } else if(
       s.status === "load" &&
       s.temp
     ) {
