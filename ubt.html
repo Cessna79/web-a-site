@@ -296,23 +296,34 @@ function render(){
   const titles={setup:"Set up profile",home:"Shift",shift:"On duty",editStop:editTitle,
     final:"End of shift",sheet:"Daily run sheet",week:"Weekly timesheet",sheets:"Saved sheets"};
   scr.textContent=titles[S.view]||"";
-  const topLevel=["home","shift","week","sheets"];
+  const topLevel=["home","shift","summary","week","sheets"];
   if(["editStop","final","sheet"].includes(S.view)){
     const back={editStop:"shift",final:"shift",sheet:"shift"}[S.view];
     navL.innerHTML=`<button class="icon" data-act="go" data-v="${back}" aria-label="Back">‹</button>`;
   } else {
     navL.innerHTML=`<div style="width:8px;height:8px;border-radius:8px;background:var(--amber)"></div>`;
   }
-  app.innerHTML=({setup:vSetup,home:vHome,shift:vShift,editStop:vEditStop,final:vFinal,sheet:vSheet,week:vWeek,sheets:vSheets}[S.view]||(()=>""))();
+app.innerHTML=({
+  setup:vSetup,
+  home:vHome,
+  shift:vShift,
+  summary:vSummary,
+  editStop:vEditStop,
+  final:vFinal,
+  sheet:vSheet,
+  week:vWeek,
+  sheets:vSheets
+}[S.view]||(()=>""))();
   // bottom tab bar
   const tb=document.getElementById("tabbar");
   const showTabs=topLevel.includes(S.view);
   document.body.classList.toggle("has-tabs", showTabs);
   tb.style.display=showTabs?"flex":"none";
   if(showTabs){
-    tb.querySelector('[data-tab="shift"]').classList.toggle("active", S.view==="shift"||S.view==="home");
-    tb.querySelector('[data-tab="week"]').classList.toggle("active", S.view==="week");
-    tb.querySelector('[data-tab="sheets"]').classList.toggle("active", S.view==="sheets");
+   tb.querySelector('[data-tab="shift"]').classList.toggle("active", S.view==="shift"||S.view==="home");
+   tb.querySelector('[data-tab="summary"]').classList.toggle("active", S.view==="summary");
+   tb.querySelector('[data-tab="week"]').classList.toggle("active", S.view==="week");
+   tb.querySelector('[data-tab="sheets"]').classList.toggle("active", S.view==="sheets");
   }
 }
 
