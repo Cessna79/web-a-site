@@ -1133,300 +1133,195 @@ function stopFieldsHtml(d) {
 }
 
 
+```js
 /* =========================================================
-   SHIFT SCREEN
+SHIFT SCREEN
 ========================================================= */
 function vShift() {
+  const sh=S.shift;
+  if(!sh)return `<div class="card muted">No active shift.</div>`;
 
-  const sh = S.shift;
+  const stops=sh.stops||[];
+  const cur=stops.length?stops[stops.length-1]:null;
 
-  if(!sh) {
-    return `
-      <div class="card muted">
-        No active shift.
+  const elapsed=`
+    <div class="card">
+      <div class="lbl">Shift elapsed</div>
+      <div id="elapsed" class="mono" style="font-size:28px;font-weight:700;color:var(--amber)">
+        ${hHM(diffH(sh.startTime,Date.now()))}
       </div>
-    `;
-  }
+    </div>`;
 
-  const stops = sh.stops || [];
+  const history=`
+    <details class="mt">
+      <summary style="cursor:pointer;padding:12px 2px;color:var(--muted)">
+        Stops · ${stops.length}
+      </summary>
+      <div style="margin-top:8px">
+        ${stops.length
+          ? stops.map((s,i)=>stopRowHtml(s,i)).join("")
+          : `<div class="card muted">No stops recorded.</div>`}
+      </div>
+    </details>`;
 
-  const cur =
-    stops.length
-      ? stops[stops.length - 1]
-      : null;
+  /* -------------------------------------------------------
+     DRIVING
+     ------------------------------------------------------- */
+  if(sh.phase==="driving"&&sh.next){
+    const n=sh.next;
+    const yard=n.pinned==="end";
 
-  const listBlock = `
-    <div
-      class="lbl"
-      style="margin:22px 2px 10px">
-      Stops
-    </div>
-
-    ${
-      stops.length
-        ? stops.map((s, i) =>
-            stopRowHtml(s, i)
-          ).join("")
-        : `
-          <div class="card muted">
-            No stops recorded.
-          </div>
-        `
-    }
-  `;
-
-
-  if(sh.phase === "driving" && sh.next) {
-
-    const n = sh.next;
-    const yard = n.pinned === "end";
-
-    const dest = yard
+    const dest=yard
       ? `
-        <div
-          class="card mt"
-          style="border-color:var(--blue)">
-
+        <div class="card mt" style="border-color:var(--blue)">
           <div class="lbl">Driving to</div>
-
-          <div style="
-            font-weight:600;
-            font-size:17px;
-            margin-top:6px">
-
-            <span
-              class="badge"
-              style="background:var(--stop)">
-              YARD
-            </span>
-
-            ${esc(n.company) || "the yard"}
-
+          <div style="font-weight:600;font-size:18px;margin-top:6px">
+            <span class="badge" style="background:var(--stop)">YARD</span>
+            ${esc(n.company)||"the yard"}
           </div>
-
-        </div>
-      `
+        </div>`
       : `
-        <div
-          class="card mt"
-          style="border-color:var(--blue)">
-
-          <div class="lbl">
-            Driving to
-          </div>
-
-          <div
-            class="field mt"
-            style="margin-bottom:8px">
-
-            <input
-              id="nextCompany"
+        <div class="card mt" style="border-color:var(--blue)">
+          <div class="lbl">Driving to</div>
+          <div class="field mt" style="margin-bottom:8px">
+            <input id="nextCompany"
               placeholder="Next stop company"
-              value="${esc(n.company || "")}">
-
+              value="${esc(n.company||"")}">
           </div>
-
-          <div
-            class="field"
-            style="margin-bottom:0">
-
-            <input
-              id="nextCity"
+          <div class="field" style="margin-bottom:0">
+            <input id="nextCity"
               placeholder="City"
-              value="${esc(n.city || "")}">
-
+              value="${esc(n.city||"")}">
           </div>
-
-        </div>
-      `;
-
+        </div>`;
 
     return `
-      <div class="card">
+      ${elapsed}
 
-        <div class="lbl">
-          Shift elapsed
-        </div>
-
-        <div
-          id="elapsed"
-          class="mono"
-          style="
-            font-size:28px;
-            font-weight:700;
-            color:var(--amber)">
-          ${hHM(diffH(sh.startTime, Date.now()))}
-        </div>
-
-      </div>
-
-      <div
-        class="muted mt"
-        style="margin-left:2px">
-
-        On the road — press
-        <b style="color:var(--hi)">
-          Arrive
-        </b>
-        when you get there.
-
+      <div class="muted mt" style="margin-left:2px">
+        On the road — arrive when you reach your destination.
       </div>
 
       ${dest}
 
-      <button
-        class="btn go mt"
-        data-act="arrive">
+      <button class="btn go mt" data-act="arrive">
         Arrive
       </button>
 
-      ${listBlock}
+      ${history}
     `;
   }
 
+  if(!cur)return `<div class="card muted">No current stop.</div>`;
 
-  if(!cur) {
+  /* -------------------------------------------------------
+     BACK AT YARD
+     ------------------------------------------------------- */
+  if(cur.pinned==="end"){
     return `
-      <div class="card muted">
-        No current stop.
-      </div>
-    `;
-  }
+      ${elapsed}
 
-
-  if(cur.pinned === "end") {
-
-    return `
-      <div class="card">
-
-        <div class="lbl">
-          Shift elapsed
+      <div class="card mt" style="border-color:var(--amber)">
+        <div class="lbl">Back at yard</div>
+        <div style="font-size:18px;font-weight:600;margin-top:6px">
+          ${esc(cur.company)||"Yard"}
         </div>
-
-        <div
-          id="elapsed"
-          class="mono"
-          style="
-            font-size:28px;
-            font-weight:700;
-            color:var(--amber)">
-          ${hHM(diffH(sh.startTime, Date.now()))}
+        <div class="muted mt">
+          Complete the final stop information, then end your shift.
         </div>
-
-      </div>
-
-      <div
-        class="muted mt"
-        style="margin-left:2px">
-
-        Back at the yard —
-        <b style="color:var(--hi)">
-          ${esc(cur.company) || "yard"}
-        </b>.
-
-        Wrap up, then end the shift.
-
       </div>
 
       ${stopFieldsHtml(cur)}
 
-      <button
-        class="btn amber mt"
-        data-act="endShift">
+      <button class="btn amber mt" data-act="endShift">
         End shift
       </button>
 
-      ${listBlock}
+      ${history}
     `;
   }
 
+  /* -------------------------------------------------------
+     STEP 1 — COMPLETE CURRENT STOP
+     ------------------------------------------------------- */
+  if((sh.uiStep||0)===0){
+    return `
+      ${elapsed}
 
+      <div class="card mt" style="border-color:var(--blue)">
+        <div class="lbl">Current stop</div>
+
+        <div style="font-size:18px;font-weight:600;margin-top:5px">
+          ${esc(cur.company)||"Unnamed stop"}
+        </div>
+
+        ${cur.city
+          ? `<div class="muted">${esc(cur.city)}</div>`
+          : ""}
+
+        <div class="muted mt" style="font-size:12px">
+          Complete the stop details below.
+        </div>
+      </div>
+
+      ${stopFieldsHtml(cur)}
+
+      <button class="btn go mt" data-act="stopNext">
+        Continue to next stop
+      </button>
+
+      <button class="btn dark mt" data-act="returnToYard">
+        Return to yard &amp; end
+      </button>
+
+      ${history}
+    `;
+  }
+
+  /* -------------------------------------------------------
+     STEP 2 — ENTER NEXT STOP
+     ------------------------------------------------------- */
   return `
-    <div class="card">
+    ${elapsed}
 
-      <div class="lbl">
-        Shift elapsed
+    <div class="card mt" style="border-color:var(--blue)">
+      <div class="lbl">Next stop</div>
+
+      <div class="muted mt" style="font-size:13px">
+        Where are you going next?
       </div>
 
-      <div
-        id="elapsed"
-        class="mono"
-        style="
-          font-size:28px;
-          font-weight:700;
-          color:var(--amber)">
-        ${hHM(diffH(sh.startTime, Date.now()))}
+      <div class="field mt">
+        <input
+          id="nextCompany"
+          placeholder="Company"
+          value="${esc(sh.next?.company||"")}">
       </div>
 
+      <div class="field">
+        <input
+          id="nextCity"
+          placeholder="City"
+          value="${esc(sh.next?.city||"")}">
+      </div>
     </div>
 
-
-    <div
-      class="muted mt"
-      style="margin-left:2px">
-
-      You're at
-      <b style="color:var(--hi)">
-        ${esc(cur.company) || "—"}
-      </b>
-
-      ${
-        cur.city
-          ? " · " + esc(cur.city)
-          : ""
-      }.
-
-      Fill this stop, set your next stop,
-      then Depart.
-
-    </div>
-
-
-    ${stopFieldsHtml(cur)}
-
-
-    <div
-      class="lbl"
-      style="margin:20px 2px 8px">
-      Next stop
-    </div>
-
-    <div class="field">
-
-      <input
-        id="nextCompany"
-        placeholder="Next stop company"
-        value="${esc(sh.next?.company || "")}">
-
-    </div>
-
-    <div class="field">
-
-      <input
-        id="nextCity"
-        placeholder="City"
-        value="${esc(sh.next?.city || "")}">
-
-    </div>
-
-
-    <button
-      class="btn stopb mt"
-      data-act="depart">
+    <button class="btn stopb mt" data-act="depart">
       Depart
     </button>
 
+    <button class="btn dark mt" data-act="stopBack">
+      Back to stop details
+    </button>
 
-    <button
-      class="btn dark mt"
-      data-act="returnToYard">
+    <button class="btn dark mt" data-act="returnToYard">
       Return to yard &amp; end
     </button>
 
-
-    ${listBlock}
+    ${history}
   `;
 }
+```
 
 
 /* =========================================================
@@ -2739,6 +2634,33 @@ if(a === "tempkey") {
 
     return;
   }
+
+  ```js
+/* Stop workflow */
+if(a==="stopNext"){
+  syncLive();
+
+  if(!S.shift) return;
+
+  S.shift.uiStep=1;
+  persist();
+  render();
+
+  return;
+}
+
+if(a==="stopBack"){
+  syncLive();
+
+  if(!S.shift) return;
+
+  S.shift.uiStep=0;
+  persist();
+  render();
+
+  return;
+}
+```
 
 
   /* Depart */
