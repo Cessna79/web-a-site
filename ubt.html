@@ -948,143 +948,93 @@ function stopRowHtml(s, i) {
    STOP FIELDS
 ========================================================= */
 function stopFieldsHtml(d) {
+const fuel = FUEL.map(f =>
+`<div class="seg ${d.fuel === f ? "on" : ""}"
+      style="${d.fuel === f ? "background:var(--go)" : ""}"
+      data-act="fuel" data-f="${f}">${f}</div>`
+).join("");
 
-  const fuel = FUEL.map(f =>
-    `<div
-      class="seg ${d.fuel === f ? "on" : ""}"
-      style="${
-        d.fuel === f
-          ? "background:var(--go)"
-          : ""
-      }"
-      data-act="fuel"
-      data-f="${f}">
-      ${f}
-    </div>`
-  ).join("");
+return ` <div class="field"> <div class="lbl">Trailer</div>
+<input id="trailer"
+placeholder="Trailer #"
+value="${esc(d.trailer || "")}"
+${d.bobtail ? "disabled" : ""}> </div>
 
+```
+<div class="field">
+  <div class="lbl">Bobtail</div>
+  <div class="segs">
+    <div class="seg ${d.bobtail ? "on" : ""}"
+      style="${d.bobtail ? "background:var(--amber)" : ""}"
+      data-act="bobtail">Bobtail</div>
+  </div>
+</div>
 
-  return `
-    <div class="field">
+<div class="field">
+  <div class="lbl">Load status</div>
+  <div class="segs">
+    <div class="seg ${d.status === "load" ? "on" : ""}"
+      style="${d.status === "load" ? "background:var(--blue)" : ""}"
+      data-act="status" data-s="load">Loaded</div>
 
-      <div class="lbl">Trailer</div>
+    <div class="seg ${d.status === "empty" ? "on" : ""}"
+      style="${d.status === "empty" ? "background:var(--mid)" : ""}"
+      data-act="status" data-s="empty">Empty</div>
+  </div>
+</div>
 
-      <input
-        id="trailer"
-        placeholder="Trailer #"
-        value="${esc(d.trailer || "")}"
-        ${d.bobtail ? "disabled" : ""}>
+${d.status === "load" ? `
+  <div class="field">
+    <div class="lbl">Fuel level</div>
+    <div class="segs">${fuel}</div>
+  </div>
 
+  <div class="field">
+    <div class="lbl">${tempLabel()}</div>
+
+    <input id="temp"
+      type="text"
+      inputmode="none"
+      autocomplete="off"
+      readonly
+      placeholder="${tempUnit() === "F" ? "e.g. 14" : "e.g. -10"}"
+      value="${esc(d.temp || "")}">
+
+    <div id="tempPad" style="
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin-top:8px;
+    ">
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="1">1</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="2">2</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="3">3</button>
+
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="4">4</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="5">5</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="6">6</button>
+
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="7">7</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="8">8</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="9">9</button>
+
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="-">−</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="0">0</button>
+      <button type="button" class="seg" data-act="tempkey" data-tempkey="back">⌫</button>
     </div>
+  </div>
+` : ""}
 
+<div class="field">
+  <div class="lbl">Remarks</div>
+  <textarea id="remarks"
+    placeholder="What you did here, or reason for delay…">${esc(d.remarks || "")}</textarea>
+</div>
+```
 
-    <div class="field">
-
-      <div class="lbl">Bobtail</div>
-
-      <div class="segs">
-
-        <div
-          class="seg ${d.bobtail ? "on" : ""}"
-          style="${
-            d.bobtail
-              ? "background:var(--amber)"
-              : ""
-          }"
-          data-act="bobtail">
-          Bobtail
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <div class="field">
-
-      <div class="lbl">Load status</div>
-
-      <div class="segs">
-
-        <div
-          class="seg ${d.status === "load" ? "on" : ""}"
-          style="${
-            d.status === "load"
-              ? "background:var(--blue)"
-              : ""
-          }"
-          data-act="status"
-          data-s="load">
-          Loaded
-        </div>
-
-        <div
-          class="seg ${d.status === "empty" ? "on" : ""}"
-          style="${
-            d.status === "empty"
-              ? "background:var(--mid)"
-              : ""
-          }"
-          data-act="status"
-          data-s="empty">
-          Empty
-        </div>
-
-      </div>
-
-    </div>
-
-
-    ${
-      d.status === "load"
-        ? `
-          <div class="field">
-
-            <div class="lbl">Fuel level</div>
-
-            <div class="segs">
-              ${fuel}
-            </div>
-
-          </div>
-
-
-          <div class="field">
-
-            <div class="lbl">
-              ${tempLabel()}
-            </div>
-
-            <input
-              id="temp"
-              type="text"
-              inputmode="decimal"
-              autocomplete="off"
-              placeholder="${
-                tempUnit() === "F"
-                  ? "e.g. 14"
-                  : "e.g. -10"
-              }"
-              value="${esc(d.temp || "")}">
-
-          </div>
-        `
-        : ""
-    }
-
-
-    <div class="field">
-
-      <div class="lbl">Remarks</div>
-
-      <textarea
-        id="remarks"
-        placeholder="What you did here, or reason for delay…"
-      >${esc(d.remarks || "")}</textarea>
-
-    </div>
-  `;
+`;
 }
+
 
 
 /* =========================================================
@@ -2259,6 +2209,41 @@ function syncLive() {
    ACTIONS
 ========================================================= */
 document.addEventListener("click", e => {
+
+  if(a==="tempkey"){
+  const key=t.dataset.tempkey;
+  const o=activeStop();
+  const input=document.getElementById("temp");
+
+  if(!o || !input) return;
+
+  let v=String(o.temp||"");
+
+  if(key==="back"){
+    v=v.slice(0,-1);
+  }else if(key==="-"){
+    if(v.startsWith("-")){
+      v=v.slice(1);
+    }else if(v){
+      v="-"+v;
+    }else{
+      v="-";
+    }
+  }else{
+    if(v==="-" && key==="0"){
+      v="-0";
+    }else if(v==="0"){
+      v=key;
+    }else{
+      v+=key;
+    }
+  }
+
+  o.temp=v;
+  input.value=v;
+  persist();
+  return;
+}
 
   const t =
     e.target.closest("[data-act]");
