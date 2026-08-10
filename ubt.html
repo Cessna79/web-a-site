@@ -329,15 +329,51 @@ app.innerHTML=({
 }
 
 function vSetup(){
-  return `
-  <p class="muted" style="margin-top:0">Enter this once. Your name and corporation print on every sheet.
+return `
+
+<p class="muted" style="margin-top:0">
+  Enter this once. Your name and corporation print on every sheet.
   Your home base is the yard you usually start from — you can change it for any day at start.
-  The truck changes daily, so you enter that when you start a shift.</p>
-  <div class="field"><div class="lbl">Driver name</div><input id="pn" placeholder="e.g. M. Singh" value="${esc(S.profile?.name||"")}"></div>
-  <div class="field"><div class="lbl">Corporation</div><input id="pc" placeholder="e.g. 12345 Ontario Inc." value="${esc(S.profile?.corp||"")}"></div>
-  <div class="field"><div class="lbl">Home base (usual start yard)</div><input id="ph" placeholder="e.g. UBT Yard, Brampton" value="${esc(S.profile?.homeBase||"")}"></div>
-  <button class="btn go" data-act="saveProfile">Save profile</button>`;
+  The truck changes daily, so you enter that when you start a shift.
+</p>
+
+<div class="field">
+  <div class="lbl">Driver name</div>
+  <input id="pn" placeholder="e.g. M. Singh"
+    value="${esc(S.profile?.name||"")}">
+</div>
+
+<div class="field">
+  <div class="lbl">Corporation</div>
+  <input id="pc" placeholder="e.g. 12345 Ontario Inc."
+    value="${esc(S.profile?.corp||"")}">
+</div>
+
+<div class="field">
+  <div class="lbl">Home base (usual start yard)</div>
+  <input id="ph" placeholder="e.g. UBT Yard, Brampton"
+    value="${esc(S.profile?.homeBase||"")}">
+</div>
+
+<div class="field">
+  <div class="lbl">Temperature unit</div>
+  <div class="segs">
+    <div class="seg ${(S.profile?.tempUnit||"C")==="C"?"on":""}"
+      style="${(S.profile?.tempUnit||"C")==="C"?"background:var(--go)":""}"
+      data-act="tempUnit" data-unit="C">
+      °C
+    </div>
+    <div class="seg ${(S.profile?.tempUnit||"C")==="F"?"on":""}"
+      style="${(S.profile?.tempUnit||"C")==="F"?"background:var(--go)":""}"
+      data-act="tempUnit" data-unit="F">
+      °F
+    </div>
+  </div>
+</div>
+
+<button class="btn go" data-act="saveProfile">Save profile</button>`;
 }
+
 function vHome(){
 return `
 
@@ -397,7 +433,16 @@ function stopFieldsHtml(d){
   </div>
   ${d.status==="load"?`
   <div class="field"><div class="lbl">Fuel level</div><div class="segs">${fuel}</div></div>
-  <div class="field"><div class="lbl">Temperature (°C)</div><input id="temp" type="text" inputmode="decimal" placeholder="e.g. -10">value="${esc(d.temp)}"></div>`:""}
+  <div class="field">
+  <div class="lbl">Temperature (${S.profile?.tempUnit==="F" ? "°F" : "°C"})</div>
+  <input
+    id="temp"
+    type="text"
+    inputmode="decimal"
+    placeholder="e.g. -10"
+    value="${esc(d.temp||"")}"
+  >
+</div>
   <div class="field"><div class="lbl">Remarks</div><textarea id="remarks" placeholder="What you did here, or reason for delay…">${esc(d.remarks)}</textarea></div>`;
 }
 function vShift(){
@@ -760,12 +805,26 @@ document.addEventListener("click", e=>{
 
   return;
 }
+  if(a==="tempUnit"){
+if(!S.profile) S.profile={};
+S.profile.tempUnit=t.dataset.unit==="F"?"F":"C";
+persist();
+render();
+return;
+}
+
   if(a==="saveProfile"){
-    S.profile={ name:(document.getElementById("pn").value.trim()||"Driver"),
-      corp:document.getElementById("pc").value.trim(),
-      homeBase:document.getElementById("ph").value.trim() };
-    persist(); go("home"); return;
-  }
+S.profile={
+name:(document.getElementById("pn").value.trim()||"Driver"),
+corp:document.getElementById("pc").value.trim(),
+homeBase:document.getElementById("ph").value.trim(),
+tempUnit:S.profile?.tempUnit||"C"
+};
+persist();
+go("home");
+return;
+}
+
   if(a==="startShift"){
 const truck=document.getElementById("truck").value.trim();
 if(!truck){ toast("Enter today's truck #"); return; }
