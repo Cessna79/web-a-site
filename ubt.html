@@ -143,6 +143,15 @@
     <span>Sheets</span>
   </button>
 
+   <button class="tab" data-act="tab" data-tab="profile">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+    <span>Profile</span>
+  </button> 
 </nav>
 <div id="toast" class="toast"></div>
 
@@ -533,27 +542,21 @@ function render() {
               )
         );
 
-  const titles = {
-    setup: "Set up profile",
-    home: "Shift",
-    shift: "On duty",
-    summary: "Summary",
-    editStop: editTitle,
-    final: "End of shift",
-    sheet: "Daily run sheet",
-    week: "Weekly timesheet",
-    sheets: "Saved sheets"
-  };
+  const titles={
+setup:"Set up profile",
+home:"Shift",
+shift:"On duty",
+editStop:editTitle,
+final:"End of shift",
+sheet:"Daily run sheet",
+week:"Weekly timesheet",
+sheets:"Saved sheets",
+profile:"Profile",
+};
 
   scr.textContent = titles[S.view] || "";
 
-  const topLevel = [
-    "home",
-    "shift",
-    "summary",
-    "week",
-    "sheets"
-  ];
+ const topLevel=["home","shift","summary","week","sheets","profile"];
 
   if(["editStop", "final", "sheet"].includes(S.view)) {
 
@@ -590,8 +593,9 @@ function render() {
     final: vFinal,
     sheet: vSheet,
     week: vWeek,
-    sheets: vSheets
-  }[S.view];
+    sheets: vSheets,
+    profile: vProfile
+    }[S.view];
 
 
   try {
@@ -649,6 +653,7 @@ function render() {
         "active",
         S.view === "sheets"
       );
+    tb.querySelector('[data-tab="profile"]').classList.toggle("active", S.view==="profile");
   }
 }
 
@@ -725,6 +730,52 @@ function vSetup() {
   `;
 }
 
+function vProfile(){
+  const p=S.profile||{};
+  const u=p.tempUnit||"C";
+
+  return `
+    <div class="card">
+
+      <div class="field">
+        <div class="lbl">Driver name</div>
+        <input id="pn" value="${esc(p.name||"")}">
+      </div>
+
+      <div class="field">
+        <div class="lbl">Corporation</div>
+        <input id="pc" value="${esc(p.corp||"")}">
+      </div>
+
+      <div class="field">
+        <div class="lbl">Home base</div>
+        <input id="ph" value="${esc(p.homeBase||"")}">
+      </div>
+
+      <div class="field">
+        <div class="lbl">Temperature unit</div>
+        <div class="segs">
+          <div class="seg ${u==="C"?"on":""}"
+            style="${u==="C"?"background:var(--go)":""}"
+            data-act="tempUnit" data-unit="C">
+            °C Celsius
+          </div>
+
+          <div class="seg ${u==="F"?"on":""}"
+            style="${u==="F"?"background:var(--go)":""}"
+            data-act="tempUnit" data-unit="F">
+            °F Fahrenheit
+          </div>
+        </div>
+      </div>
+
+      <button class="btn go" data-act="saveProfile">
+        Save profile
+      </button>
+
+    </div>
+  `;
+}
 
 /* =========================================================
    HOME
