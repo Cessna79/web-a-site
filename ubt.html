@@ -1056,16 +1056,62 @@ function stopFieldsHtml(d) {
             </div>
 
             <input
-              id="temp"
-              type="text"
-              inputmode="decimal"
-              autocomplete="off"
-              placeholder="${
-                tempUnit() === "F"
-                  ? "e.g. 14"
-                  : "e.g. -10"
-              }"
-              value="${esc(d.temp || "")}">
+  id="temp"
+  type="text"
+  inputmode="none"
+  autocomplete="off"
+  readonly
+  placeholder="${
+    tempUnit() === "F"
+      ? "e.g. -10"
+      : "e.g. -10"
+  }"
+  value="${esc(d.temp || "")}">
+
+  <div id="tempPad" style="
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:8px;
+">
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="1">1</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="2">2</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="3">3</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="4">4</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="5">5</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="6">6</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="7">7</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="8">8</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="9">9</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="-">−</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="0">0</button>
+
+  <button type="button" class="seg"
+    data-act="tempkey" data-tempkey="back">⌫</button>
+
+</div>
 
           </div>
         `
