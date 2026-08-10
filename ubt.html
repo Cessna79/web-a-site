@@ -1106,7 +1106,7 @@ function vShift() {
   const cur=stops.length?stops[stops.length-1]:null;
 
   const elapsed=`
-    <div class="card">
+    <div class="card" style="text-align:center">
       <div class="lbl">Shift elapsed</div>
       <div id="elapsed" class="mono" style="font-size:28px;font-weight:700;color:var(--amber)">
         ${hHM(diffH(sh.startTime,Date.now()))}
