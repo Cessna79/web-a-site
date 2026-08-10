@@ -731,45 +731,51 @@ function vSetup() {
 }
 
 function vProfile(){
-const p=S.profile||{};
-const u=p.tempUnit||"C";
+  const p=S.profile||{};
+  const u=p.tempUnit||"C";
 
-return `
-<div class="card">
+  return `
+    <div class="card">
 
-  <div class="field">
-    <div class="lbl">Driver name</div>
-    <input id="pn" value="${esc(p.name||"")}" placeholder="Driver name">
-  </div>
+      <div class="field">
+        <div class="lbl">Driver name</div>
+        <input id="pn" value="${esc(p.name||"")}">
+      </div>
 
-  <div class="field">
-    <div class="lbl">Corporation</div>
-    <input id="pc" value="${esc(p.corp||"")}" placeholder="Corporation">
-  </div>
+      <div class="field">
+        <div class="lbl">Corporation</div>
+        <input id="pc" value="${esc(p.corp||"")}">
+      </div>
 
-  <div class="field">
-    <div class="lbl">Home base</div>
-    <input id="ph" value="${esc(p.homeBase||"")}" placeholder="Usual start yard">
-  </div>
+      <div class="field">
+        <div class="lbl">Home base</div>
+        <input id="ph" value="${esc(p.homeBase||"")}">
+      </div>
 
-  <div class="field">
-    <div class="lbl">Temperature unit</div>
-    <div class="segs">
-      <div class="seg ${u==="C"?"on":""}"
-        style="${u==="C"?"background:var(--go)":""}"
-        data-act="tempUnit" data-unit="C">°C Celsius</div>
+      <div class="field">
+        <div class="lbl">Temperature unit</div>
+        <div class="segs">
+          <div class="seg ${u==="C"?"on":""}"
+            style="${u==="C"?"background:var(--go)":""}"
+            data-act="tempUnit" data-unit="C">
+            °C Celsius
+          </div>
 
-      <div class="seg ${u==="F"?"on":""}"
-        style="${u==="F"?"background:var(--go)":""}"
-        data-act="tempUnit" data-unit="F">°F Fahrenheit</div>
+          <div class="seg ${u==="F"?"on":""}"
+            style="${u==="F"?"background:var(--go)":""}"
+            data-act="tempUnit" data-unit="F">
+            °F Fahrenheit
+          </div>
+        </div>
+      </div>
+
+      <button class="btn go" data-act="saveProfile">
+        Save profile
+      </button>
+
     </div>
-  </div>
-
-  <button class="btn go" data-act="saveProfile">Save profile</button>
-
-</div>
-`;
-}  
+  `;
+}
 
 /* =========================================================
    HOME
