@@ -2315,12 +2315,9 @@ document.addEventListener("click", e => {
   /* Start shift from home */
   if(a === "startShiftHome") {
 
-    S.view = "shiftStart";
+    S.pendingStart = round15(Date.now());   // clock in on the FIRST tap
 
-    /*
-       Temporary special handling:
-       use home screen to show start form.
-    */
+    S.view = "shiftStart";
 
     renderStartShift();
 
@@ -2377,7 +2374,8 @@ document.addEventListener("click", e => {
         .trim();
 
 
-    const t = round15(Date.now());
+    const t = S.pendingStart || round15(Date.now());
+    S.pendingStart = null;
 
 
     S.shift = {
@@ -3025,13 +3023,12 @@ function renderStartShift() {
 
 
   navL.innerHTML =
-    `<button
-      class="icon"
-      data-act="go"
-      data-v="home"
-      aria-label="Back">
-      ‹
-    </button>`;
+    `<div style="
+      width:8px;
+      height:8px;
+      border-radius:8px;
+      background:var(--amber)">
+    </div>`;
 
 
   navR.innerHTML =
