@@ -177,7 +177,7 @@
 
   frame.addEventListener('load', function () {
     loaded = true;
-    setTimeout(reveal, 3000);   // fallback if the app never posts back
+    reveal();   // fallback if the app never posts back
   });
 
   // if nothing arrives, say why rather than sitting on a spinner forever
