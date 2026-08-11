@@ -65,13 +65,13 @@
       "subtitle": "Time Sheet",
       "url": "/ubt.html",
       "status": "Live"
-    }
+    },
     {
       "title": "Trading",
       "subtitle": "Journal",
       "url": "/trading.html",
-      "status": "Draft"
-    },
+      "status": "Live"
+    }
 
   ],
   "client": [
