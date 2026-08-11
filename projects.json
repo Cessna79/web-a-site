@@ -66,6 +66,12 @@
       "url": "/ubt.html",
       "status": "Live"
     }
+    {
+      "title": "Trading",
+      "subtitle": "Journal",
+      "url": "/trading.html",
+      "status": "Draft"
+    },
 
   ],
   "client": [
