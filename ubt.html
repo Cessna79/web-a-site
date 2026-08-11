@@ -546,6 +546,7 @@ function render() {
 setup:"Set up profile",
 home:"Shift",
 shift:"On duty",
+summary:"Summary",
 editStop:editTitle,
 final:"End of shift",
 sheet:"Daily run sheet",
@@ -556,7 +557,7 @@ profile:"Profile",
 
   scr.textContent = titles[S.view] || "";
 
-  if((S.view === "shift" || S.view === "summary") && S.shift && S.shift.done){
+  if(S.view === "summary" && S.shift && S.shift.done){
     scr.textContent = "Shift complete";
   }
 
@@ -567,7 +568,7 @@ profile:"Profile",
     const back = {
       editStop: "shift",
       final: "shift",
-      sheet: "shift"
+      sheet: "summary"
     }[S.view];
 
     navL.innerHTML =
@@ -791,13 +792,20 @@ function vProfile(){
 ========================================================= */
 function vHome() {
 
+  const now = new Date();
+
   return `
     <div class="card">
 
-      <div class="lbl">Today's shift</div>
+      <div class="lbl">Today</div>
 
-      <div class="muted">
-        Start a new shift when you're ready.
+      <div style="font-size:20px;font-weight:600;margin-top:4px">
+        ${WD[now.getDay()]}, ${todayStr(now)}
+      </div>
+
+      <div id="nowClock" class="mono"
+        style="font-size:34px;font-weight:700;color:var(--amber);margin-top:6px">
+        ${fmtT(now.getTime())}
       </div>
 
     </div>
@@ -1346,6 +1354,11 @@ function vSummary() {
       </div>
 
       <div class="row">
+        <span class="k">Date</span>
+        <span class="v">${sh.date || ""}</span>
+      </div>
+
+      <div class="row">
         <span class="k">Truck</span>
         <span class="v">
           ${esc(sh.truck) || "—"}
@@ -1411,9 +1424,6 @@ function vSummary() {
       </div>
       <button class="btn go mt" data-act="go" data-v="sheet">
         View run sheet
-      </button>
-      <button class="btn dark mt" data-act="fileShift">
-        Start new shift
       </button>
     ` : ""}
   `;
@@ -2227,7 +2237,7 @@ document.addEventListener("click", e => {
 
     if(tab === "shift") {
 
-      go(S.shift ? "shift" : "home");
+      go(S.shift && !S.shift.done ? "shift" : "home");
 
     } else {
 
@@ -3123,6 +3133,11 @@ setInterval(() => {
 
     }
 
+  }
+
+  if(S.view === "home") {
+    const c = document.getElementById("nowClock");
+    if(c) c.textContent = fmtT(Date.now());
   }
 
 }, 1000);
