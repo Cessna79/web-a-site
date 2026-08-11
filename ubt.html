@@ -2746,8 +2746,7 @@ if(a==="stopBack"){
     return;
   }
 
-  /* Make current stop final */
-if(a === "makeFinal") {
+  if(a === "makeFinal") {
 
   syncLive();
 
@@ -2760,6 +2759,13 @@ if(a === "makeFinal") {
     S.shift.stops[
       S.shift.stops.length - 1
     ];
+
+  const ok = confirm(
+    "Finish shift at this stop?\n\n" +
+    "This will make the current stop your final stop for today."
+  );
+
+  if(!ok) return;
 
   cur.pinned = "end";
 
