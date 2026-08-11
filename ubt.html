@@ -556,6 +556,10 @@ profile:"Profile",
 
   scr.textContent = titles[S.view] || "";
 
+  if((S.view === "shift" || S.view === "summary") && S.shift && S.shift.done){
+    scr.textContent = "Shift complete";
+  }
+
  const topLevel=["home","shift","summary","week","sheets","profile"];
 
   if(["editStop", "final", "sheet"].includes(S.view)) {
@@ -862,6 +866,8 @@ function startShiftForm() {
 ========================================================= */
 function stopRowHtml(s, i) {
 
+  const locked = !!(S.shift && S.shift.done);
+
   const badge = s.pinned
     ? `<span
         class="badge"
@@ -878,12 +884,12 @@ function stopRowHtml(s, i) {
       </span>`
     : "";
 
-  return `
-    <button
-      class="stoprow"
-      data-act="editStop"
-      data-i="${i}">
+  const openTag = locked
+    ? `<div class="stoprow" style="cursor:default">`
+    : `<button class="stoprow" data-act="editStop" data-i="${i}">`;
 
+  return `
+    ${openTag}
       <div style="flex:1">
 
         <div style="font-weight:600">
@@ -938,7 +944,7 @@ function stopRowHtml(s, i) {
 
       </div>
 
-    </button>
+    ${locked ? "</div>" : "</button>"}
   `;
 }
 
@@ -1102,11 +1108,13 @@ function vShift() {
   const sh=S.shift;
   if(!sh)return `<div class="card muted">No active shift.</div>`;
 
+  if(sh.done) return vSummary();
+
   const stops=sh.stops||[];
   const cur=stops.length?stops[stops.length-1]:null;
 
   const elapsed=`
-    <div class="card" style="text-align:center">
+    <div class="card">
       <div class="lbl">Shift elapsed</div>
       <div id="elapsed" class="mono" style="font-size:28px;font-weight:700;color:var(--amber)">
         ${hHM(diffH(sh.startTime,Date.now()))}
@@ -1396,6 +1404,18 @@ function vSummary() {
           </div>
         `
     }
+
+    ${sh.done ? `
+      <div class="muted mt" style="text-align:center">
+        Shift complete — view only.
+      </div>
+      <button class="btn go mt" data-act="go" data-v="sheet">
+        View run sheet
+      </button>
+      <button class="btn dark mt" data-act="fileShift">
+        Start new shift
+      </button>
+    ` : ""}
   `;
 }
 
@@ -2207,11 +2227,7 @@ document.addEventListener("click", e => {
 
     if(tab === "shift") {
 
-      go(
-        S.shift && !S.shift.done
-          ? "shift"
-          : "home"
-      );
+      go(S.shift ? "shift" : "home");
 
     } else {
 
@@ -2414,6 +2430,7 @@ document.addEventListener("click", e => {
   if(a === "editStop") {
 
     if(!S.shift) return;
+    if(S.shift.done){ toast("Shift finished — view only"); return; }
 
     S.editMode = "edit";
 
@@ -2758,6 +2775,8 @@ if(a==="stopBack"){
   /* End shift */
   if(a === "endShift") {
 
+    if(!S.shift || S.shift.done) return;
+
     syncLive();
 
 
@@ -3086,11 +3105,11 @@ setInterval(() => {
 
   if(
     S.view === "shift" &&
-    S.shift
+    S.shift &&
+    !S.shift.done
   ) {
 
-    const el =
-      document.getElementById("elapsed");
+    const el = document.getElementById("elapsed");
 
     if(el) {
 
