@@ -2742,6 +2742,35 @@ if(a==="stopBack"){
     return;
   }
 
+  /* Make current stop final */
+if(a === "makeFinal") {
+
+  syncLive();
+
+  if(
+    !S.shift ||
+    !S.shift.stops.length
+  ) return;
+
+  const cur =
+    S.shift.stops[
+      S.shift.stops.length - 1
+    ];
+
+  cur.pinned = "end";
+
+  S.shift.endCompany =
+    cur.company || "";
+
+  S.shift.phase = "atStop";
+
+  persist();
+
+  render();
+
+  return;
+}
+
 
   /* Arrive */
   if(a === "arrive") {
