@@ -1243,29 +1243,49 @@ function vShift() {
   /* -------------------------------------------------------
      BACK AT YARD
      ------------------------------------------------------- */
-  if(cur.pinned==="end"){
-    return `
-      ${elapsed}
+if(cur.pinned==="end"){
+  return `
+    ${elapsed}
 
-      <div class="card mt" style="border-color:var(--amber)">
-        <div class="lbl">Final stop</div>
-        <div style="font-size:18px;font-weight:600;margin-top:6px">
-          ${esc(cur.company)||"Yard"}
-        </div>
-        <div class="muted mt">
-          Complete the final stop information, then end your shift.
-        </div>
+    <div class="card mt" style="border-color:var(--amber)">
+      <div class="lbl">Final stop</div>
+
+      <div style="font-size:18px;font-weight:600;margin-top:6px">
+        ${esc(cur.company)||"Yard"}
       </div>
 
-      ${stopFieldsHtml(cur)}
+      ${
+        cur.city
+          ? `<div class="muted">${esc(cur.city)}</div>`
+          : ""
+      }
 
-      <button class="btn amber mt" data-act="endShift">
-        End shift
-      </button>
+      <div class="muted mt">
+        Add any final remarks, then end your shift.
+      </div>
+    </div>
 
-      ${history}
-    `;
-  }
+
+    <div class="field">
+
+      <div class="lbl">Remarks</div>
+
+      <textarea
+        id="remarks"
+        placeholder="Final remarks…"
+      >${esc(cur.remarks || "")}</textarea>
+
+    </div>
+
+
+    <button class="btn amber mt" data-act="endShift">
+      End shift
+    </button>
+
+
+    ${history}
+  `;
+}
 
   /* -------------------------------------------------------
      AT A STOP — details + next stop on one screen; Depart saves
