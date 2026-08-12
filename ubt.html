@@ -2787,9 +2787,6 @@ if(a==="stopBack"){
   return;
 }
 
-
-
-
   /* Depart */
 if(a === "depart") {
 
@@ -2806,34 +2803,47 @@ if(a === "depart") {
     ];
 
 
-  /* Equipment required:
-     either Bobtail or Trailer */
+  /* Equipment */
+
   if(
     !cur.bobtail &&
     !(cur.trailer || "").trim()
   ) {
-    toast("Select Bobtail or enter a trailer #");
+    toast("Enter trailer # or select Bobtail");
     return;
   }
 
 
-  /* Bobtail does not need load status */
+  /* Trailer workflow */
+
   if(!cur.bobtail) {
 
+    /* Load status required */
+
     if(
-      cur.status !== "load" &&
-      cur.status !== "empty"
+      cur.status !== "empty" &&
+      cur.status !== "load"
     ) {
-      toast("Select Loaded or Empty");
+      toast("Select Empty or Loaded");
       return;
     }
 
 
-    /* Loaded equipment requires
-       Reefer or Dry */
+    /* Loaded workflow */
+
     if(cur.status === "load") {
 
-      if(cur.dry !== true) {
+      /* Dry or Reefer required */
+
+      if(cur.dry !== true && cur.dry !== false) {
+        toast("Select Dry or Reefer");
+        return;
+      }
+
+
+      /* Reefer requires fuel + temperature */
+
+      if(cur.dry === false) {
 
         if(
           !cur.fuel ||
@@ -2858,7 +2868,8 @@ if(a === "depart") {
   }
 
 
-  /* Next destination required */
+  /* Next destination */
+
   if(
     !S.shift.next ||
     !(S.shift.next.company || "").trim()
@@ -2875,6 +2886,8 @@ if(a === "depart") {
     return;
   }
 
+
+  /* Everything is complete */
 
   S.shift.stops[
     S.shift.stops.length - 1
