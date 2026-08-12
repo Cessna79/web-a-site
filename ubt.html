@@ -3050,86 +3050,12 @@ if(a === "returnToYard") {
   }
 
 
-  /* End shift */
+   /* End shift */
 if(a === "endShift") {
 
   if(!S.shift || S.shift.done) return;
 
   syncLive();
-
-
-  const cur =
-    S.shift.stops[
-      S.shift.stops.length - 1
-    ];
-
-
-  if(!cur) return;
-
-
-  /* Equipment */
-
-  if(
-    !cur.bobtail &&
-    !(cur.trailer || "").trim()
-  ) {
-    toast("Enter trailer # or select Bobtail");
-    return;
-  }
-
-
-  /* Trailer workflow */
-
-  if(!cur.bobtail) {
-
-    /* Load status required */
-
-    if(
-      cur.status !== "empty" &&
-      cur.status !== "load"
-    ) {
-      toast("Select Empty or Loaded");
-      return;
-    }
-
-
-    /* Loaded workflow */
-
-    if(cur.status === "load") {
-
-      /* Dry or Reefer required */
-
-      if(cur.dry !== true && cur.dry !== false) {
-        toast("Select Dry or Reefer");
-        return;
-      }
-
-
-      /* Reefer requires fuel + temperature */
-
-      if(cur.dry === false) {
-
-        if(
-          !cur.fuel ||
-          !String(cur.fuel).trim()
-        ) {
-          toast("Select a fuel level");
-          return;
-        }
-
-
-        if(
-          !String(cur.temp || "").trim()
-        ) {
-          toast("Enter temperature");
-          return;
-        }
-
-      }
-
-    }
-
-  }
 
 
   const ok = confirm(
@@ -3140,7 +3066,6 @@ if(a === "endShift") {
 
 
   if(!ok) return;
-
 
   go("final");
 
