@@ -3051,6 +3051,135 @@ if(a === "changeTruck") {
 
   return;
 } 
+
+/* Save truck change */
+if(a === "saveTruckChange") {
+
+  if(!S.shift || S.shift.done) {
+    return;
+  }
+
+  const finishKm =
+    document
+      .getElementById("changeTruckFinishKm")
+      .value
+      .trim();
+
+  const newTruck =
+    document
+      .getElementById("newTruck")
+      .value
+      .trim();
+
+  const newStartKm =
+    document
+      .getElementById("newTruckStartKm")
+      .value
+      .trim();
+
+
+  /* Current truck finish mileage */
+
+  if(!finishKm) {
+    toast("Enter current truck finish mileage");
+    return;
+  }
+
+  if(!/^\d+(\.\d+)?$/.test(finishKm)) {
+    toast("Finish mileage must contain numbers only");
+    return;
+  }
+
+
+  /* Replacement truck number */
+
+  if(!newTruck) {
+    toast("Enter replacement truck #");
+    return;
+  }
+
+  if(!/^\d+$/.test(newTruck)) {
+    toast("Truck # must contain numbers only");
+    return;
+  }
+
+
+  /* Replacement truck starting mileage */
+
+  if(!newStartKm) {
+    toast("Enter replacement truck starting mileage");
+    return;
+  }
+
+  if(!/^\d+(\.\d+)?$/.test(newStartKm)) {
+    toast("Starting mileage must contain numbers only");
+    return;
+  }
+
+
+  const trucks =
+    S.shift.trucks || [];
+
+
+  if(!trucks.length) {
+    toast("Truck information is missing");
+    return;
+  }
+
+
+  const current =
+    trucks[trucks.length - 1];
+
+
+  /* Make sure current truck mileage makes sense */
+
+  if(
+    Number(finishKm) <
+    Number(current.startKm)
+  ) {
+    toast(
+      "Truck finish mileage cannot be lower than its start mileage"
+    );
+    return;
+  }
+
+
+  /* Save current truck finish */
+
+  current.finishKm =
+    finishKm;
+
+
+  /* Add replacement truck */
+
+  trucks.push({
+    truck: newTruck,
+    startKm: newStartKm,
+    finishKm: ""
+  });
+
+
+  /* Make replacement truck the active truck */
+
+  S.shift.truck =
+    newTruck;
+
+
+  S.shift.trucks =
+    trucks;
+
+
+  persist();
+
+  go("shift");
+
+  toast(
+    "Truck changed to " + newTruck
+  );
+
+  return;
+}  
+  
   /* Depart */
 if(a === "depart") {
 
