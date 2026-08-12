@@ -2698,38 +2698,104 @@ if(a==="stopBack"){
 
 
   /* Depart */
-  if(a === "depart") {
+if(a === "depart") {
 
-    syncLive();
+  syncLive();
 
+  if(!S.shift || !S.shift.stops.length) {
+    return;
+  }
+
+
+  const cur =
+    S.shift.stops[
+      S.shift.stops.length - 1
+    ];
+
+
+  /* Equipment required:
+     either Bobtail or Trailer */
+  if(
+    !cur.bobtail &&
+    !(cur.trailer || "").trim()
+  ) {
+    toast("Select Bobtail or enter a trailer #");
+    return;
+  }
+
+
+  /* Bobtail does not need load status */
+  if(!cur.bobtail) {
 
     if(
-      !S.shift.next ||
-      !(S.shift.next.company || "").trim()
+      cur.status !== "load" &&
+      cur.status !== "empty"
     ) {
-
-      toast(
-        "Enter your next stop, or use Return to yard"
-      );
-
+      toast("Select Loaded or Empty");
       return;
     }
 
 
-    S.shift.stops[
-      S.shift.stops.length - 1
-    ].timeOut = Date.now();
+    /* Loaded equipment requires
+       Reefer or Dry */
+    if(cur.status === "load") {
+
+      if(cur.dry !== true) {
+
+        if(
+          !cur.fuel ||
+          !String(cur.fuel).trim()
+        ) {
+          toast("Select a fuel level");
+          return;
+        }
 
 
-    S.shift.phase = "driving";
+        if(
+          !String(cur.temp || "").trim()
+        ) {
+          toast("Enter temperature");
+          return;
+        }
 
-    persist();
+      }
 
-    go("shift");
+    }
 
+  }
+
+
+  /* Next destination required */
+  if(
+    !S.shift.next ||
+    !(S.shift.next.company || "").trim()
+  ) {
+    toast("Enter your next stop company");
     return;
   }
 
+
+  if(
+    !(S.shift.next.city || "").trim()
+  ) {
+    toast("Enter your next stop city");
+    return;
+  }
+
+
+  S.shift.stops[
+    S.shift.stops.length - 1
+  ].timeOut = Date.now();
+
+
+  S.shift.phase = "driving";
+
+  persist();
+
+  go("shift");
+
+  return;
+}
 
   /* Return to yard */
   if(a === "returnToYard") {
