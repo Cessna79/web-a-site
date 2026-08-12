@@ -998,11 +998,7 @@ function stopFieldsHtml(d) {
   const fuel = FUEL.map(f =>
     `<div
       class="seg ${d.fuel === f ? "on" : ""}"
-      style="${
-        d.fuel === f
-          ? "background:var(--go)"
-          : ""
-      }"
+      style="${d.fuel === f ? "background:var(--go)" : ""}"
       data-act="fuel"
       data-f="${f}">
       ${f}
@@ -1010,26 +1006,9 @@ function stopFieldsHtml(d) {
   ).join("");
 
 
-  const isTrailer =
-    !d.bobtail;
-
-  const isLoaded =
-    d.status === "load";
-
-  const isEmpty =
-    d.status === "empty";
-
-  const isReefer =
-    isLoaded && d.dry !== true;
-
-  const isDry =
-    isLoaded && d.dry === true;
-
-
   return `
 
-    <!-- EQUIPMENT -->
-
+    <!-- EQUIPMENT TYPE -->
     <div class="field">
 
       <div class="lbl">Equipment</div>
@@ -1038,22 +1017,14 @@ function stopFieldsHtml(d) {
 
         <div
           class="seg ${d.bobtail ? "on" : ""}"
-          style="${
-            d.bobtail
-              ? "background:var(--amber)"
-              : ""
-          }"
+          style="${d.bobtail ? "background:var(--amber)" : ""}"
           data-act="bobtail">
           Bobtail
         </div>
 
         <div
-          class="seg ${isTrailer ? "on" : ""}"
-          style="${
-            isTrailer
-              ? "background:var(--blue)"
-              : ""
-          }"
+          class="seg ${!d.bobtail && d.bobtail !== undefined ? "on" : ""}"
+          style="${!d.bobtail && d.bobtail !== undefined ? "background:var(--blue)" : ""}"
           data-act="trailerMode">
           Trailer
         </div>
@@ -1063,15 +1034,15 @@ function stopFieldsHtml(d) {
     </div>
 
 
-    <!-- TRAILER -->
-
     ${
-      isTrailer
-        ? `
+      d.bobtail
+        ? ""
+        : `
 
+          <!-- TRAILER NUMBER -->
           <div class="field">
 
-            <div class="lbl">Trailer #</div>
+            <div class="lbl">Trailer</div>
 
             <input
               id="trailer"
@@ -1082,7 +1053,6 @@ function stopFieldsHtml(d) {
 
 
           <!-- LOAD STATUS -->
-
           <div class="field">
 
             <div class="lbl">Load status</div>
@@ -1090,24 +1060,16 @@ function stopFieldsHtml(d) {
             <div class="segs">
 
               <div
-                class="seg ${isEmpty ? "on" : ""}"
-                style="${
-                  isEmpty
-                    ? "background:var(--mid)"
-                    : ""
-                }"
+                class="seg ${d.status === "empty" ? "on" : ""}"
+                style="${d.status === "empty" ? "background:var(--mid)" : ""}"
                 data-act="status"
                 data-s="empty">
                 Empty
               </div>
 
               <div
-                class="seg ${isLoaded ? "on" : ""}"
-                style="${
-                  isLoaded
-                    ? "background:var(--blue)"
-                    : ""
-                }"
+                class="seg ${d.status === "load" ? "on" : ""}"
+                style="${d.status === "load" ? "background:var(--blue)" : ""}"
                 data-act="status"
                 data-s="load">
                 Loaded
@@ -1118,12 +1080,11 @@ function stopFieldsHtml(d) {
           </div>
 
 
-          <!-- LOADED -->
-
           ${
-            isLoaded
+            d.status === "load"
               ? `
 
+                <!-- DRY / REEFER -->
                 <div class="field">
 
                   <div class="lbl">Trailer type</div>
@@ -1131,24 +1092,16 @@ function stopFieldsHtml(d) {
                   <div class="segs">
 
                     <div
-                      class="seg ${isDry ? "on" : ""}"
-                      style="${
-                        isDry
-                          ? "background:var(--mid)"
-                          : ""
-                      }"
+                      class="seg ${d.dry ? "on" : ""}"
+                      style="${d.dry ? "background:var(--mid)" : ""}"
                       data-act="reefer"
                       data-r="dry">
                       Dry
                     </div>
 
                     <div
-                      class="seg ${isReefer ? "on" : ""}"
-                      style="${
-                        isReefer
-                          ? "background:var(--blue)"
-                          : ""
-                      }"
+                      class="seg ${!d.dry && d.dry !== undefined ? "on" : ""}"
+                      style="${!d.dry && d.dry !== undefined ? "background:var(--blue)" : ""}"
                       data-act="reefer"
                       data-r="reefer">
                       Reefer
@@ -1160,9 +1113,10 @@ function stopFieldsHtml(d) {
 
 
                 ${
-                  isReefer
+                  !d.dry
                     ? `
 
+                      <!-- FUEL -->
                       <div class="field">
 
                         <div class="lbl">Fuel level</div>
@@ -1174,6 +1128,7 @@ function stopFieldsHtml(d) {
                       </div>
 
 
+                      <!-- TEMPERATURE -->
                       ${tempFieldHtml(d)}
 
                     `
@@ -1185,12 +1140,10 @@ function stopFieldsHtml(d) {
           }
 
         `
-        : ""
     }
 
 
     <!-- REMARKS -->
-
     <div class="field">
 
       <div class="lbl">Remarks</div>
@@ -1201,6 +1154,7 @@ function stopFieldsHtml(d) {
       >${esc(d.remarks || "")}</textarea>
 
     </div>
+
   `;
 }
 
