@@ -1044,9 +1044,13 @@ function stopFieldsHtml(d) {
             <div class="lbl">Trailer</div>
 
             <input
-              id="trailer"
-              placeholder="Trailer #"
-              value="${esc(d.trailer || "")}">
+                 id="trailer"
+                 type="text"
+                 inputmode="numeric"
+                 pattern="[0-9]*"
+                 placeholder="Trailer #"
+                 value="${esc(d.trailer || "")}">
+                value="${esc(d.trailer || "")}">
 
           </div>
 
