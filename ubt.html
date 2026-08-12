@@ -2337,114 +2337,124 @@ document.addEventListener("click", e => {
 
 
   /* Start shift */
-  if(a === "startShift") {
+if(a === "startShift") {
 
-    const truck =
-      document
-        .getElementById("truck")
-        .value
-        .trim();
+  const truck =
+    document
+      .getElementById("truck")
+      .value
+      .trim();
 
-
-    if(!truck) {
-      toast("Enter today's truck #");
-      return;
-    }
-
-
-    const startKm =
-      document
-        .getElementById("startKm")
-        .value
-        .trim();
-
-
-    if(!startKm) {
-      toast("Enter starting mileage");
-      return;
-    }
-
-
-    if(!/^\d+(\.\d+)?$/.test(startKm)) {
-      toast("Starting mileage must contain numbers only");
-      return;
-    }
-
-
-    const company =
-      document
-        .getElementById("startCo")
-        .value
-        .trim();
-
-
-    const city =
-      document
-        .getElementById("startCity")
-        .value
-        .trim();
-
-
-    const t = S.pendingStart || round15(Date.now());
-    S.pendingStart = null;
-
-
-    S.shift = {
-
-      id: t,
-
-      date: todayStr(),
-
-      truck,
-
-      startCompany: company,
-
-      startCity: city,
-
-      startTime: t,
-
-      finishTime: null,
-
-      phase: "atStop",
-
-      next: blankNext(),
-
-      endCompany: company,
-
-      stops: [
-
-        {
-          trailer: "",
-          bobtail: false,
-          status: null,
-          fuel: "",
-          temp: "",
-          company,
-          city,
-          timeIn: t,
-          timeOut: null,
-          remarks: "",
-          pinned: "start"
-        }
-
-      ],
-
-      startKm,
-
-      finishKm: "",
-
-      done: false
-
-    };
-
-
-    persist();
-
-    go("shift");
-
+  if(!truck) {
+    toast("Enter today's truck #");
     return;
   }
 
+
+  const startKm =
+    document
+      .getElementById("startKm")
+      .value
+      .trim();
+
+  if(!startKm) {
+    toast("Enter starting mileage");
+    return;
+  }
+
+
+  if(!/^\d+(\.\d+)?$/.test(startKm)) {
+    toast("Starting mileage must contain numbers only");
+    return;
+  }
+
+
+  const company =
+    document
+      .getElementById("startCo")
+      .value
+      .trim();
+
+  if(!company) {
+    toast("Enter starting yard / company");
+    return;
+  }
+
+
+  const city =
+    document
+      .getElementById("startCity")
+      .value
+      .trim();
+
+  if(!city) {
+    toast("Enter starting city");
+    return;
+  }
+
+
+  const t =
+    S.pendingStart ||
+    round15(Date.now());
+
+  S.pendingStart = null;
+
+
+  S.shift = {
+
+    id: t,
+
+    date: todayStr(),
+
+    truck,
+
+    startCompany: company,
+
+    startCity: city,
+
+    startTime: t,
+
+    finishTime: null,
+
+    phase: "atStop",
+
+    next: blankNext(),
+
+    endCompany: company,
+
+    stops: [
+
+      {
+        trailer: "",
+        bobtail: false,
+        status: null,
+        fuel: "",
+        temp: "",
+        company,
+        city,
+        timeIn: t,
+        timeOut: null,
+        remarks: "",
+        pinned: "start"
+      }
+
+    ],
+
+    startKm,
+
+    finishKm: "",
+
+    done: false
+
+  };
+
+
+  persist();
+
+  go("shift");
+
+  return;
+}
 
   /* Edit stop */
   if(a === "editStop") {
