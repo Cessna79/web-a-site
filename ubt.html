@@ -2904,73 +2904,114 @@ if(a === "depart") {
 }
 
   /* Return to yard */
-  if(a === "returnToYard") {
-
-    syncLive();
-
-
-    S.shift.next = {
-      ...blankNext(),
-
-      company:
-        S.shift.endCompany ||
-        S.profile.homeBase ||
-        S.shift.startCompany ||
-        "",
-
-      pinned: "end"
-    };
-
-
-    S.shift.stops[
-      S.shift.stops.length - 1
-    ].timeOut = Date.now();
-
-
-    S.shift.phase = "driving";
-
-    persist();
-
-    go("shift");
-
-    return;
-  }
-
-  if(a === "makeFinal") {
+if(a === "returnToYard") {
 
   syncLive();
 
-  if(
-    !S.shift ||
-    !S.shift.stops.length
-  ) return;
+  if(!S.shift || !S.shift.stops.length) {
+    return;
+  }
+
 
   const cur =
     S.shift.stops[
       S.shift.stops.length - 1
     ];
 
-  const ok = confirm(
-    "Finish shift at this stop?\n\n" +
-    "This will make the current stop your final stop for today."
-  );
 
-  if(!ok) return;
+  /* Equipment */
 
-  cur.pinned = "end";
+  if(
+    !cur.bobtail &&
+    !(cur.trailer || "").trim()
+  ) {
+    toast("Enter trailer # or select Bobtail");
+    return;
+  }
 
-  S.shift.endCompany =
-    cur.company || "";
 
-  S.shift.phase = "atStop";
+  /* Trailer workflow */
+
+  if(!cur.bobtail) {
+
+    /* Load status required */
+
+    if(
+      cur.status !== "empty" &&
+      cur.status !== "load"
+    ) {
+      toast("Select Empty or Loaded");
+      return;
+    }
+
+
+    /* Loaded workflow */
+
+    if(cur.status === "load") {
+
+      /* Dry or Reefer required */
+
+      if(cur.dry !== true && cur.dry !== false) {
+        toast("Select Dry or Reefer");
+        return;
+      }
+
+
+      /* Reefer requires fuel + temperature */
+
+      if(cur.dry === false) {
+
+        if(
+          !cur.fuel ||
+          !String(cur.fuel).trim()
+        ) {
+          toast("Select a fuel level");
+          return;
+        }
+
+
+        if(
+          !String(cur.temp || "").trim()
+        ) {
+          toast("Enter temperature");
+          return;
+        }
+
+      }
+
+    }
+
+  }
+
+
+  /* Everything required is complete */
+
+  S.shift.next = {
+    ...blankNext(),
+
+    company:
+      S.shift.endCompany ||
+      S.profile.homeBase ||
+      S.shift.startCompany ||
+      "",
+
+    pinned: "end"
+  };
+
+
+  S.shift.stops[
+    S.shift.stops.length - 1
+  ].timeOut = Date.now();
+
+
+  S.shift.phase = "driving";
 
   persist();
 
-  render();
+  go("shift");
 
   return;
 }
-
 
   /* Arrive */
   if(a === "arrive") {
