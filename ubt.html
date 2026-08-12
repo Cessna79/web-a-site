@@ -5629,7 +5629,17 @@ async function makeWeekly(monArg) {
 /* =========================================================
    INITIAL RENDER
 ========================================================= */
-render();
+
+if(S.loggedIn) {
+
+  render();
+
+} else {
+
+  S.view = "login";
+  render();
+
+}
 
 </script>
 ```
