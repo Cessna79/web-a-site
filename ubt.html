@@ -2806,6 +2806,60 @@ if(a==="stopBack"){
   return;
 }
 
+  /* Finish shift at current stop */
+if(a === "makeFinal") {
+
+  syncLive();
+
+  if(
+    !S.shift ||
+    !S.shift.stops ||
+    !S.shift.stops.length
+  ) {
+    return;
+  }
+
+  const cur =
+    S.shift.stops[
+      S.shift.stops.length - 1
+    ];
+
+  /*
+    The current stop is already the
+    driver's final location.
+    Do NOT create another yard stop.
+  */
+
+  const ok = confirm(
+    "Finish shift at this stop?\n\n" +
+    "This will make the current stop your final stop for today."
+  );
+
+  if(!ok) return;
+
+  /*
+    Mark the current stop as the final stop.
+  */
+  cur.pinned = "end";
+
+  /*
+    Save its company as the final company.
+  */
+  S.shift.endCompany =
+    cur.company || "";
+
+  /*
+    Make sure the driver remains at this
+    stop rather than entering the driving phase.
+  */
+  S.shift.phase = "atStop";
+
+  persist();
+
+  render();
+
+  return;
+}
   /* Depart */
 if(a === "depart") {
 
