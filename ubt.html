@@ -2321,29 +2321,49 @@ document.addEventListener("click", e => {
   }
 
 
-  /* Temperature unit */
-  if(a === "tempUnit") {
+/* Temperature unit */
+if(a === "tempUnit") {
 
-    if(!S.profile) {
-      S.profile = {
-        name: "Driver",
-        corp: "",
-        homeBase: "",
-        tempUnit: "C"
-      };
-    }
-
-    S.profile.tempUnit =
-      t.dataset.unit === "F"
-        ? "F"
-        : "C";
-
-    persist();
-    render();
-
-    return;
+  if(!S.profile) {
+    S.profile = {
+      name: "Driver",
+      corp: "",
+      homeBase: "",
+      tempUnit: "C"
+    };
   }
 
+  /* Save current profile fields before re-rendering */
+  const nameEl = document.getElementById("pn");
+  const corpEl = document.getElementById("pc");
+  const homeEl = document.getElementById("ph");
+
+  if(nameEl) {
+    S.profile.name =
+      nameEl.value.trim() || "Driver";
+  }
+
+  if(corpEl) {
+    S.profile.corp =
+      corpEl.value.trim();
+  }
+
+  if(homeEl) {
+    S.profile.homeBase =
+      homeEl.value.trim();
+  }
+
+  /* Change only the temperature unit */
+  S.profile.tempUnit =
+    t.dataset.unit === "F"
+      ? "F"
+      : "C";
+
+  persist();
+  render();
+
+  return;
+}
 
   /* Save profile */
   if(a === "saveProfile") {
