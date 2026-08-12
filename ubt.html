@@ -3218,6 +3218,19 @@ if(a === "saveTruckChange") {
 
   return;
 }
+
+  /* Cancel truck change */
+if(a === "cancelTruckChange") {
+
+  if(!S.shift) {
+    go("home");
+    return;
+  }
+
+  go("shift");
+
+  return;
+}
   
   /* Depart */
 if(a === "depart") {
