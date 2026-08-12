@@ -400,28 +400,30 @@ function loadState() {
           : (shift && !shift.done ? "shift" : "home");
 
       return {
-        profile: o.profile || null,
-        past: o.past || [],
-        shift,
-        view,
-        editMode: "edit",
-        editIdx: null,
-        draft: null
-      };
+  profile: o.profile || null,
+  past: o.past || [],
+  shift,
+  view,
+  loggedIn: false,
+  editMode: "edit",
+  editIdx: null,
+  draft: null
+};
     }
   } catch(e) {
     console.error("State load error:", e);
   }
 
   return {
-    profile: null,
-    past: [],
-    shift: null,
-    view: "setup",
-    editMode: "edit",
-    editIdx: null,
-    draft: null
-  };
+  profile: null,
+  past: [],
+  shift: null,
+  view: "setup",
+  loggedIn: false,
+  editMode: "edit",
+  editIdx: null,
+  draft: null
+};
 }
 
 
@@ -544,6 +546,7 @@ function render() {
 
   const titles={
 setup:"Set up profile",
+login:"Login",    
 home:"Shift",
 shift:"On duty",
 summary:"Summary",
@@ -593,6 +596,7 @@ profile:"Profile",
 
   const renderer = {
   setup: vSetup,
+  login: vLogin,  
   home: vHome,
   shift: vShift,
   summary: vSummary,
@@ -738,6 +742,56 @@ function vSetup() {
   `;
 }
 
+/* =========================================================
+   LOGIN SCREEN
+========================================================= */
+function vLogin() {
+
+  return `
+    <div class="card" style="
+      text-align:center;
+      margin-top:120px;
+      padding:30px 20px">
+
+      <div style="
+        font-size:30px;
+        font-weight:800;
+        letter-spacing:2px;
+        color:var(--blue)">
+        UBT
+      </div>
+
+      <div class="muted" style="
+        margin-top:6px;
+        font-size:13px">
+        Driver login
+      </div>
+
+      <div class="field" style="
+        margin-top:24px;
+        text-align:left">
+
+        <div class="lbl">PIN</div>
+
+        <input
+          id="loginPin"
+          type="password"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="4"
+          placeholder="Enter PIN"
+          autocomplete="off">
+      </div>
+
+      <button
+        class="btn go mt"
+        data-act="login">
+        Login
+      </button>
+
+    </div>
+  `;
+}
 function vProfile(){
   const p=S.profile||{};
   const u=p.tempUnit||"C";
@@ -2438,7 +2492,40 @@ document.addEventListener("click", e => {
 
   const a = t.dataset.act;
 
+  /* Login */
+if(a === "login") {
 
+  const pin =
+    document
+      .getElementById("loginPin")
+      .value
+      .trim();
+
+  if(!/^\d+$/.test(pin)) {
+    toast("Enter your PIN");
+    return;
+  }
+
+  if(pin !== "1234") {
+    toast("Incorrect PIN");
+    return;
+  }
+
+  S.loggedIn = true;
+
+  persist();
+
+  if(S.shift && !S.shift.done) {
+    go("shift");
+  } else if(S.profile) {
+    go("home");
+  } else {
+    go("setup");
+  }
+
+  return;
+}
+  
   /* Navigation */
   if(a === "go") {
 
