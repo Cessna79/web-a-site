@@ -2521,12 +2521,20 @@ if(a === "startShift") {
 
   S.shift = {
 
-    id: t,
+     id: t,
 
     date: todayStr(),
 
     truck,
 
+    trucks: [
+      {
+        truck: truck,
+        startKm: startKm,
+        finishKm: ""
+      }
+    ],
+    
     startCompany: company,
 
     startCity: city,
