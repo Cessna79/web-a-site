@@ -1010,23 +1010,29 @@ function stopFieldsHtml(d) {
   ).join("");
 
 
+  const isTrailer =
+    !d.bobtail;
+
+  const isLoaded =
+    d.status === "load";
+
+  const isEmpty =
+    d.status === "empty";
+
+  const isReefer =
+    isLoaded && d.dry !== true;
+
+  const isDry =
+    isLoaded && d.dry === true;
+
+
   return `
-    <div class="field">
 
-      <div class="lbl">Trailer</div>
-
-      <input
-        id="trailer"
-        placeholder="Trailer #"
-        value="${esc(d.trailer || "")}"
-        ${d.bobtail ? "disabled" : ""}>
-
-    </div>
-
+    <!-- EQUIPMENT -->
 
     <div class="field">
 
-      <div class="lbl">Bobtail</div>
+      <div class="lbl">Equipment</div>
 
       <div class="segs">
 
@@ -1041,39 +1047,15 @@ function stopFieldsHtml(d) {
           Bobtail
         </div>
 
-      </div>
-
-    </div>
-
-
-    <div class="field">
-
-      <div class="lbl">Load status</div>
-
-      <div class="segs">
-
         <div
-          class="seg ${d.status === "load" ? "on" : ""}"
+          class="seg ${isTrailer ? "on" : ""}"
           style="${
-            d.status === "load"
+            isTrailer
               ? "background:var(--blue)"
               : ""
           }"
-          data-act="status"
-          data-s="load">
-          Loaded
-        </div>
-
-        <div
-          class="seg ${d.status === "empty" ? "on" : ""}"
-          style="${
-            d.status === "empty"
-              ? "background:var(--mid)"
-              : ""
-          }"
-          data-act="status"
-          data-s="empty">
-          Empty
+          data-act="trailerMode">
+          Trailer
         </div>
 
       </div>
@@ -1081,27 +1063,133 @@ function stopFieldsHtml(d) {
     </div>
 
 
+    <!-- TRAILER -->
+
     ${
-      d.status === "load"
+      isTrailer
         ? `
+
           <div class="field">
 
-            <div class="lbl">Fuel level</div>
+            <div class="lbl">Trailer #</div>
+
+            <input
+              id="trailer"
+              placeholder="Trailer #"
+              value="${esc(d.trailer || "")}">
+
+          </div>
+
+
+          <!-- LOAD STATUS -->
+
+          <div class="field">
+
+            <div class="lbl">Load status</div>
 
             <div class="segs">
-              ${fuel}
+
+              <div
+                class="seg ${isEmpty ? "on" : ""}"
+                style="${
+                  isEmpty
+                    ? "background:var(--mid)"
+                    : ""
+                }"
+                data-act="status"
+                data-s="empty">
+                Empty
+              </div>
+
+              <div
+                class="seg ${isLoaded ? "on" : ""}"
+                style="${
+                  isLoaded
+                    ? "background:var(--blue)"
+                    : ""
+                }"
+                data-act="status"
+                data-s="load">
+                Loaded
+              </div>
+
             </div>
 
           </div>
 
 
-          ${reeferToggleHtml(d)}
+          <!-- LOADED -->
 
-          ${tempFieldHtml(d)}
+          ${
+            isLoaded
+              ? `
+
+                <div class="field">
+
+                  <div class="lbl">Trailer type</div>
+
+                  <div class="segs">
+
+                    <div
+                      class="seg ${isDry ? "on" : ""}"
+                      style="${
+                        isDry
+                          ? "background:var(--mid)"
+                          : ""
+                      }"
+                      data-act="reefer"
+                      data-r="dry">
+                      Dry
+                    </div>
+
+                    <div
+                      class="seg ${isReefer ? "on" : ""}"
+                      style="${
+                        isReefer
+                          ? "background:var(--blue)"
+                          : ""
+                      }"
+                      data-act="reefer"
+                      data-r="reefer">
+                      Reefer
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+                ${
+                  isReefer
+                    ? `
+
+                      <div class="field">
+
+                        <div class="lbl">Fuel level</div>
+
+                        <div class="segs">
+                          ${fuel}
+                        </div>
+
+                      </div>
+
+
+                      ${tempFieldHtml(d)}
+
+                    `
+                    : ""
+                }
+
+              `
+              : ""
+          }
+
         `
         : ""
     }
 
+
+    <!-- REMARKS -->
 
     <div class="field">
 
@@ -1115,7 +1203,6 @@ function stopFieldsHtml(d) {
     </div>
   `;
 }
-
 
 /* =========================================================
 SHIFT SCREEN
