@@ -822,6 +822,10 @@ function vHome() {
 /* =========================================================
    START SHIFT SCREEN
 ========================================================= */
+
+/* =========================================================
+   START SHIFT SCREEN
+========================================================= */
 function startShiftForm() {
 
   return `
@@ -832,7 +836,8 @@ function startShiftForm() {
         <input
           id="truck"
           placeholder="e.g. 123"
-          autocomplete="off">
+          autocomplete="off"
+          required>
       </div>
 
       <div class="field">
@@ -841,21 +846,24 @@ function startShiftForm() {
           id="startKm"
           type="text"
           inputmode="decimal"
-          placeholder="e.g. 245678">
+          placeholder="e.g. 245678"
+          required>
       </div>
 
       <div class="field">
         <div class="lbl">Starting yard / company</div>
         <input
           id="startCo"
-          placeholder="${esc(S.profile?.homeBase || "Yard")}">
+          placeholder="${esc(S.profile?.homeBase || "Yard")}"
+          required>
       </div>
 
       <div class="field">
         <div class="lbl">City</div>
         <input
           id="startCity"
-          placeholder="City">
+          placeholder="City"
+          required>
       </div>
 
     </div>
