@@ -1312,10 +1312,17 @@ if(cur.pinned==="end"){
           Complete the stop details below.
         </div>
 
-        <div class="muted mt" style="font-size:22px;text-align:center"font-weight:700;color:var(--amber);margin-top:0px">
-         At stop · <span id="stopTimer" class="mono">00:00</span>
+
+        <div class="card mt" style="text-align:center;border-color:var(--amber)">
+        <div class="lbl">Time at stop</div>
+        <div
+         id="stopTimer"
+         class="mono"
+         style="font-size:21px;font-weight:700;color:var(--amber);margin-top:4px">
+         00:00:00
        </div>
-       </div>
+      </div>
+        
       </div>
 
       ${stopFieldsHtml(cur)}
