@@ -2520,55 +2520,91 @@ if(a === "startShift") {
   }
 
 
-  /* Bobtail */
-  if(a === "bobtail") {
+/* Bobtail */
+if(a === "bobtail") {
 
-    syncLive();
+  syncLive();
 
-    const o = activeStop();
+  const o = activeStop();
 
-    if(o) {
+  if(o) {
 
-      o.bobtail =
-        !o.bobtail;
+    o.bobtail = true;
 
-      if(o.bobtail) {
-        o.trailer = "";
-      }
+    o.trailer = "";
+    o.status = null;
+    o.dry = false;
+    o.fuel = "";
+    o.temp = "";
 
+  }
+
+  persist();
+  render();
+
+  return;
+}
+
+ /* Trailer */
+if(a === "trailerMode") {
+
+  syncLive();
+
+  const o = activeStop();
+
+  if(o) {
+
+    o.bobtail = false;
+
+    if(o.status === undefined) {
+      o.status = null;
     }
 
-    render();
-
-    return;
   }
+
+  persist();
+  render();
+
+  return;
+} 
 
 
   /* Status */
-  if(a === "status") {
+if(a === "status") {
 
-    syncLive();
+  syncLive();
 
-    const o = activeStop();
+  const o = activeStop();
 
-    const s = t.dataset.s;
+  const s = t.dataset.s;
 
-    if(o) {
+  if(o) {
 
-      o.status = s;
+    o.status = s;
 
-      if(s === "empty") {
-        o.fuel = "";
-        o.temp = "";
-        o.dry = false;
-      }
+    if(s === "empty") {
+
+      o.dry = false;
+      o.fuel = "";
+      o.temp = "";
 
     }
 
-    render();
+    if(s === "load") {
 
-    return;
+      o.dry = undefined;
+      o.fuel = "";
+      o.temp = "";
+
+    }
+
   }
+
+  persist();
+  render();
+
+  return;
+}
 
 
   /* Fuel */
@@ -2587,18 +2623,34 @@ if(a === "startShift") {
     return;
   }
 
-  /* Reefer on / dry */
-  if(a === "reefer") {
-    syncLive();
-    const o = activeStop();
-    if(o) {
-      o.dry = (t.dataset.r === "dry");
-      if(o.dry) o.temp = "";
+/* Dry / Reefer */
+if(a === "reefer") {
+
+  syncLive();
+
+  const o = activeStop();
+
+  if(o) {
+
+    if(t.dataset.r === "dry") {
+
+      o.dry = true;
+      o.fuel = "";
+      o.temp = "";
+
+    } else {
+
+      o.dry = false;
+
     }
-    render();
-    return;
+
   }
 
+  persist();
+  render();
+
+  return;
+}
   /* Temperature keypad */
 if(a === "tempkey") {
 
