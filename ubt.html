@@ -802,9 +802,11 @@ function vHome() {
 
       <div class="lbl">Today</div>
 
-      <div style="font-size:20px;font-weight:600;margin-top:4px">
+      <div
+        id="todayDate"
+        style="font-size:20px;font-weight:600;margin-top:4px">
         ${WD[now.getDay()]}, ${todayStr(now)}
-      </div>
+     </div>
 
       <div id="nowClock" class="mono"
         style="font-size:34px;font-weight:700;color:var(--amber);margin-top:6px">
@@ -3910,14 +3912,25 @@ setInterval(() => {
 
   if(S.view === "home") {
 
-    const c =
-      document.getElementById("nowClock");
+  const now = new Date();
 
-    if(c)
-      c.textContent =
-        fmtT(Date.now());
+  const c =
+    document.getElementById("nowClock");
 
+  if(c) {
+    c.textContent =
+      fmtT(now.getTime());
   }
+
+  const d =
+    document.getElementById("todayDate");
+
+  if(d) {
+    d.textContent =
+      `${WD[now.getDay()]}, ${todayStr(now)}`;
+  }
+
+}
 
 }, 1000);
 /* =========================================================
