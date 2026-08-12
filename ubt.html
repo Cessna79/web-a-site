@@ -822,10 +822,6 @@ function vHome() {
 /* =========================================================
    START SHIFT SCREEN
 ========================================================= */
-
-/* =========================================================
-   START SHIFT SCREEN
-========================================================= */
 function startShiftForm() {
 
   return `
@@ -834,10 +830,13 @@ function startShiftForm() {
       <div class="field">
         <div class="lbl">Truck #</div>
         <input
-          id="truck"
-          placeholder="e.g. 123"
-          autocomplete="off"
-          required>
+           id="truck"
+           type="text"
+           inputmode="numeric"
+           pattern="[0-9]*"
+           placeholder="e.g. 123"
+           autocomplete="off">
+           required>
       </div>
 
       <div class="field">
