@@ -3117,8 +3117,32 @@ if(a === "saveTruckChange") {
   }
 
 
+  /* Get truck history */
+
+  if(!Array.isArray(S.shift.trucks)) {
+
+    S.shift.trucks = [];
+
+    /*
+      Compatibility with shifts created
+      before the multi-truck feature existed.
+    */
+
+    if(S.shift.truck) {
+
+      S.shift.trucks.push({
+        truck: S.shift.truck,
+        startKm: S.shift.startKm || "",
+        finishKm: ""
+      });
+
+    }
+
+  }
+
+
   const trucks =
-    S.shift.trucks || [];
+    S.shift.trucks;
 
 
   if(!trucks.length) {
@@ -3126,6 +3150,8 @@ if(a === "saveTruckChange") {
     return;
   }
 
+
+  /* Current truck */
 
   const current =
     trucks[trucks.length - 1];
@@ -3137,9 +3163,11 @@ if(a === "saveTruckChange") {
     Number(finishKm) <
     Number(current.startKm)
   ) {
+
     toast(
       "Truck finish mileage cannot be lower than its start mileage"
     );
+
     return;
   }
 
@@ -3153,17 +3181,20 @@ if(a === "saveTruckChange") {
   /* Add replacement truck */
 
   trucks.push({
+
     truck: newTruck,
+
     startKm: newStartKm,
+
     finishKm: ""
+
   });
 
 
-  /* Make replacement truck the active truck */
+  /* Make replacement truck active */
 
   S.shift.truck =
     newTruck;
-
 
   S.shift.trucks =
     trucks;
@@ -3178,7 +3209,7 @@ if(a === "saveTruckChange") {
   );
 
   return;
-}  
+}
   
   /* Depart */
 if(a === "depart") {
