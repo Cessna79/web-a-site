@@ -3033,6 +3033,24 @@ if(a === "makeFinal") {
 
   return;
 }
+
+ /* Change truck */
+if(a === "changeTruck") {
+
+  if(!S.shift || S.shift.done) {
+    return;
+  }
+
+  syncLive();
+
+  S.view = "changeTruck";
+
+  persist();
+
+  render();
+
+  return;
+} 
   /* Depart */
 if(a === "depart") {
 
