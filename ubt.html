@@ -1297,12 +1297,55 @@ if(cur.pinned==="end"){
     return `
       ${elapsed}
 
-      <div class="card mt" style="border-color:var(--blue)">
-        <div class="lbl">Current stop</div>
+      <div class="card mt" style="border-color:var(--blue);position:relative">
 
-        <div style="font-size:18px;font-weight:600;margin-top:5px">
-          ${esc(cur.company)||"Unnamed stop"}
-        </div>
+  <div style="
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px">
+
+    <div>
+      <div class="lbl">Current stop</div>
+
+      <div style="
+        font-size:18px;
+        font-weight:600;
+        margin-top:5px">
+        ${esc(cur.company)||"Unnamed stop"}
+      </div>
+
+      ${cur.city
+        ? `<div class="muted">${esc(cur.city)}</div>`
+        : ""}
+    </div>
+
+    <div style="
+      text-align:right;
+      flex-shrink:0">
+
+      <div class="lbl">At stop</div>
+
+      <div
+        id="stopTimer"
+        class="mono"
+        style="
+          font-size:15px;
+          font-weight:500;
+          color:var(--amber);
+          margin-top:3px">
+        00:00:00
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="muted mt" style="font-size:12px">
+    Complete the stop details below.
+  </div>
+
+</div>
 
         ${cur.city
           ? `<div class="muted">${esc(cur.city)}</div>`
