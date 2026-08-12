@@ -549,6 +549,7 @@ shift:"On duty",
 summary:"Summary",
 editStop:editTitle,
 final:"End of shift",
+changeTruck:"Change truck",
 sheet:"Daily run sheet",
 week:"Weekly timesheet",
 sheets:"Saved sheets",
@@ -563,13 +564,14 @@ profile:"Profile",
 
  const topLevel=["home","shift","summary","week","sheets","profile"];
 
-  if(["editStop", "final", "sheet"].includes(S.view)) {
+  if(["editStop", "final", "changeTruck", "sheet"].includes(S.view)) {
 
     const back = {
-      editStop: "shift",
-      final: "shift",
-      sheet: "summary"
-    }[S.view];
+  editStop: "shift",
+  final: "shift",
+  changeTruck: "shift",
+  sheet: "summary"
+  }[S.view];
 
     navL.innerHTML =
       `<button class="icon"
@@ -590,17 +592,18 @@ profile:"Profile",
 
 
   const renderer = {
-    setup: vSetup,
-    home: vHome,
-    shift: vShift,
-    summary: vSummary,
-    editStop: vEditStop,
-    final: vFinal,
-    sheet: vSheet,
-    week: vWeek,
-    sheets: vSheets,
-    profile: vProfile
-    }[S.view];
+  setup: vSetup,
+  home: vHome,
+  shift: vShift,
+  summary: vSummary,
+  editStop: vEditStop,
+  final: vFinal,
+  changeTruck: vChangeTruck,
+  sheet: vSheet,
+  week: vWeek,
+  sheets: vSheets,
+  profile: vProfile
+}[S.view];
 
 
   try {
@@ -1684,6 +1687,101 @@ function vFinal() {
       class="btn amber mt"
       data-act="finishShift">
       Finish shift
+    </button>
+  `;
+}
+
+  /* =========================================================
+   CHANGE TRUCK SCREEN
+========================================================= */
+function vChangeTruck() {
+
+  const sh = S.shift;
+
+  const trucks =
+    sh?.trucks || [];
+
+  const current =
+    trucks.length
+      ? trucks[trucks.length - 1]
+      : null;
+
+  return `
+    <div class="card">
+
+      <div class="lbl">
+        Change truck
+      </div>
+
+      <div style="
+        font-size:18px;
+        font-weight:600;
+        margin-top:6px">
+        ${esc(current?.truck || sh?.truck || "—")}
+      </div>
+
+      <div class="muted mt">
+        Enter the mileage when leaving this truck.
+      </div>
+
+      <div class="field mt">
+        <div class="lbl">
+          Current truck finish mileage
+        </div>
+
+        <input
+          id="changeTruckFinishKm"
+          type="text"
+          inputmode="decimal"
+          placeholder="Finish mileage">
+      </div>
+
+    </div>
+
+
+    <div class="card mt">
+
+      <div class="lbl">
+        Replacement truck
+      </div>
+
+      <div class="field mt">
+        <div class="lbl">
+          Truck #
+        </div>
+
+        <input
+          id="newTruck"
+          type="text"
+          inputmode="numeric"
+          placeholder="Truck #">
+      </div>
+
+      <div class="field">
+        <div class="lbl">
+          Starting mileage
+        </div>
+
+        <input
+          id="newTruckStartKm"
+          type="text"
+          inputmode="decimal"
+          placeholder="Starting mileage">
+      </div>
+
+    </div>
+
+
+    <button
+      class="btn amber mt"
+      data-act="saveTruckChange">
+      Change truck
+    </button>
+
+    <button
+      class="btn dark mt"
+      data-act="cancelTruckChange">
+      Cancel
     </button>
   `;
 }
