@@ -2631,14 +2631,16 @@ if(a === "power") {
   );
 
   if(!ok) return;
+  
+S.loggedIn = false;
 
+S.view = "login";
 
-  persist();
+persist();
 
-  go("home");
+render();
 
-  return;
-}
+return;
 
   /* Login */
 if(a === "login") {
