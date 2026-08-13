@@ -398,21 +398,68 @@ function loadState() {
   shift &&
   !shift.done;
 
+const hasPendingStart =
+  !shift &&
+  o.pendingStart != null;
+
+
+/*
+  Once work has started, keep the driver logged in.
+  This includes the Start Shift form before the truck
+  has actually been assigned.
+*/
 const loggedIn =
-  hasActiveShift
+  hasActiveShift || hasPendingStart
     ? true
     : o.loggedIn === true;
 
-const view =
-  !o.profile
-    ? "setup"
-    : hasActiveShift
-      ? "shift"
-      : loggedIn
-        ? "home"
-        : "login";
 
-      return {
+let view;
+
+
+/* No profile yet */
+if(!o.profile) {
+
+  view = "setup";
+
+
+/* Driver already pressed Start Shift */
+} else if(hasPendingStart) {
+
+  view = "shiftStart";
+
+
+/* Existing unfinished shift */
+} else if(hasActiveShift) {
+
+  /*
+    Preserve special in-progress screens.
+    Otherwise return to the normal shift screen.
+  */
+
+  const resumableViews = [
+    "shift",
+    "final",
+    "changeTruck",
+    "editStop"
+  ];
+
+  view =
+    resumableViews.includes(o.view)
+      ? o.view
+      : "shift";
+
+
+/* No active work */
+} else {
+
+  view =
+    loggedIn
+      ? "home"
+      : "login";
+
+}
+return {
   profile: o.profile || null,
   past: o.past || [],
   shift,
@@ -541,6 +588,11 @@ function render() {
     console.error("Required application elements are missing.");
     return;
   }
+  /* Restore Start Shift screen after app restart */
+if(S.view === "shiftStart") {
+  renderStartShift();
+  return;
+}
 
   navL.innerHTML = "";
   navR.innerHTML = `
