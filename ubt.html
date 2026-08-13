@@ -1727,8 +1727,40 @@ function vFinal() {
 
   const sh = S.shift;
 
+  const trucks =
+    Array.isArray(sh?.trucks)
+      ? sh.trucks
+      : [];
+
+  const currentTruck =
+    trucks.length
+      ? trucks[trucks.length - 1]
+      : null;
+
+  const activeTruck =
+    currentTruck?.truck ||
+    sh?.truck ||
+    "—";
+
+  const activeStartKm =
+    currentTruck?.startKm ||
+    sh?.startKm ||
+    "—";
+
   return `
     <div class="card">
+
+      <div class="lbl">
+        Current truck
+      </div>
+
+      <div style="
+        font-size:18px;
+        font-weight:600;
+        margin-bottom:18px">
+        ${esc(activeTruck)}
+      </div>
+
 
       <div class="lbl">
         Finish mileage
@@ -1741,10 +1773,11 @@ function vFinal() {
         pattern="[0-9.]*"
         placeholder="Enter finish mileage">
 
+
       <div class="muted mt">
         Start mileage:
         <b>
-          ${esc(sh?.startKm || "—")}
+          ${esc(activeStartKm)}
         </b>
       </div>
 
@@ -1758,7 +1791,6 @@ function vFinal() {
     </button>
   `;
 }
-
   /* =========================================================
    CHANGE TRUCK SCREEN
 ========================================================= */
