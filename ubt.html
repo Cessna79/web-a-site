@@ -2818,14 +2818,16 @@ if(a === "startShiftHome") {
 
 
   S.pendingStart =
-    round15(Date.now());
+  round15(Date.now());
 
-  S.view =
-    "shiftStart";
+S.view =
+  "shiftStart";
 
-  renderStartShift();
+persist();
 
-  return;
+renderStartShift();
+
+return;
 }
 
 
