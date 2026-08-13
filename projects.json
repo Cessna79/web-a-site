@@ -67,16 +67,10 @@
       "status": "Live"
     },
     {
-      "title": "Trading",
-      "subtitle": "Journal",
-      "url": "/Trading.html",
-      "status": "Live"
-    },
-    {
-      "title": "Aman Trading",
-      "subtitle": "Journal",
-      "url": "/amantrading.html",
-      "status": "Live"
+      "title": "UBT Test",
+      "subtitle": "Test",
+      "url": "/ubt-test.html",
+      "status": "Draft"
     }
 
   ],
