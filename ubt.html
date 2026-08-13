@@ -3645,90 +3645,107 @@ if(a === "endShift") {
 
 
   /* Finish shift */
-  if(a === "finishShift") {
+if(a === "finishShift") {
 
-    const finishKm =
-      document
-        .getElementById("fkm")
-        .value
-        .trim();
+  const finishKm =
+    document
+      .getElementById("fkm")
+      .value
+      .trim();
 
-
-    const startKm =
-      String(
-        S.shift.startKm || ""
-      ).trim();
-
-
-    if(!startKm) {
-      toast(
-        "Start mileage is missing from this shift"
-      );
-      return;
-    }
-
-
-    if(!finishKm) {
-      toast("Enter finish mileage");
-      return;
-    }
-
-
-    if(!/^\d+(\.\d+)?$/.test(finishKm)) {
-
-      toast(
-        "Mileage must contain numbers only"
-      );
-
-      return;
-    }
-
-
-    if(
-      Number(finishKm) <
-      Number(startKm)
-    ) {
-
-      toast(
-        "Finish mileage cannot be lower than start mileage"
-      );
-
-      return;
-    }
-
-
-    S.shift.finishKm =
-      finishKm;
-
-
-    const actualFinish =
-      Date.now();
-
-    const t =
-      round15(actualFinish);
-
-
-    S.shift.stops[
-      S.shift.stops.length - 1
-    ].timeOut =
-      actualFinish;
-
-
-    S.shift.finishTime =
-      t;
-
-    S.shift.done =
-      true;
-
-
-    upsertPast(S.shift);
-
-    persist();
-
-    go("sheet");
-
+  if(!S.shift) {
     return;
   }
+
+  const trucks =
+    Array.isArray(S.shift.trucks)
+      ? S.shift.trucks
+      : [];
+
+  const currentTruck =
+    trucks.length
+      ? trucks[trucks.length - 1]
+      : null;
+
+  const startKm =
+    String(
+      currentTruck?.startKm ||
+      S.shift.startKm ||
+      ""
+    ).trim();
+
+
+  if(!startKm) {
+    toast("Start mileage is missing from this truck");
+    return;
+  }
+
+
+  if(!finishKm) {
+    toast("Enter finish mileage");
+    return;
+  }
+
+
+  if(!/^\d+(\.\d+)?$/.test(finishKm)) {
+    toast("Mileage must contain numbers only");
+    return;
+  }
+
+
+  if(
+    Number(finishKm) <
+    Number(startKm)
+  ) {
+    toast(
+      "Finish mileage cannot be lower than current truck start mileage"
+    );
+    return;
+  }
+
+
+  /* Save finish mileage to current truck */
+
+  if(currentTruck) {
+    currentTruck.finishKm =
+      finishKm;
+  }
+
+
+  /* Keep old field for compatibility */
+
+  S.shift.finishKm =
+    finishKm;
+
+
+  const actualFinish =
+    Date.now();
+
+  const t =
+    round15(actualFinish);
+
+
+  S.shift.stops[
+    S.shift.stops.length - 1
+  ].timeOut =
+    actualFinish;
+
+
+  S.shift.finishTime =
+    t;
+
+  S.shift.done =
+    true;
+
+
+  upsertPast(S.shift);
+
+  persist();
+
+  go("sheet");
+
+  return;
+}
 
 
   /* Abandon active shift */
