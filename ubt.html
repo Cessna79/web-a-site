@@ -4520,13 +4520,18 @@ function drawRunPage(
     B
   );
 
-  txt(
-    sh.truck,
-    rx + 4,
-    M + 60,
-    9,
-    F
-  );
+  const truckList =
+  Array.isArray(sh.trucks) && sh.trucks.length
+    ? sh.trucks.map(t => t.truck).join(" / ")
+    : sh.truck || "";
+
+txt(
+  truckList,
+  rx + 4,
+  M + 60,
+  9,
+  F
+);
 
 
   if(pages > 1) {
@@ -4987,36 +4992,67 @@ function drawRunPage(
   );
 
 
-  txt(
-    "Start " +
-    (sh.startKm || "—"),
-    fxs[0] + 4,
-    fTop + 22,
-    7
-  );
+  const truckMiles =
+  Array.isArray(sh.trucks) && sh.trucks.length
+    ? sh.trucks
+    : [
+        {
+          truck: sh.truck || "",
+          startKm: sh.startKm || "",
+          finishKm: sh.finishKm || ""
+        }
+      ];
 
+const startList =
+  truckMiles
+    .map(t => t.startKm || "—")
+    .join(" / ");
 
-  txt(
-    "Finish " +
-    (sh.finishKm || "—"),
-    fxs[0] + 4,
-    fTop + 32,
-    7
-  );
+const finishList =
+  truckMiles
+    .map(t => t.finishKm || "—")
+    .join(" / ");
 
+const totalList =
+  truckMiles
+    .map(t => {
+      if(
+        t.startKm === "" ||
+        t.startKm == null ||
+        t.finishKm === "" ||
+        t.finishKm == null
+      ) {
+        return "—";
+      }
 
-  txt(
-    "Total " +
-    (
-      km !== ""
-        ? km + " km"
-        : "—"
-    ),
-    fxs[0] + 4,
-    fTop + 42,
-    7,
-    B
-  );
+      return String(
+        Number(t.finishKm) -
+        Number(t.startKm)
+      );
+    })
+    .join(" / ");
+
+txt(
+  "Start " + startList,
+  fxs[0] + 4,
+  fTop + 22,
+  7
+);
+
+txt(
+  "Finish " + finishList,
+  fxs[0] + 4,
+  fTop + 32,
+  7
+);
+
+txt(
+  "Total " + totalList + " km",
+  fxs[0] + 4,
+  fTop + 42,
+  7,
+  B
+);
 
 
   txt(
