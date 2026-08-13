@@ -473,6 +473,31 @@
     ========================================================= */
     const pad = n => String(n).padStart(2, "0");
 
+    /*
+       Shift id.
+
+       Must be unique across PHONES, not just on this one — the
+       moment sheets from several drivers share a database, an id
+       built from the clock collides (two drivers starting at 06:00
+       would produce the same one).
+
+       crypto.randomUUID needs a secure context. That covers file://
+       and https://, but NOT plain http:// to a laptop on the LAN,
+       which is how a phone usually gets a test build — hence the
+       fallback.
+    */
+    function newId() {
+        return (
+        typeof crypto !== "undefined" &&
+        crypto.randomUUID
+        )
+        ? crypto.randomUUID()
+        : "s-" +
+        Date.now().toString(36) +
+        "-" +
+        Math.random().toString(36).slice(2, 10);
+    }
+
     function round15(ms) {
         if (ms == null)
             return null;
@@ -3561,7 +3586,7 @@
 
             S.shift = {
 
-                id: t,
+                id: newId(),
 
                 date: todayStr(),
 
