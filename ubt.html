@@ -404,7 +404,7 @@ function loadState() {
   past: o.past || [],
   shift,
   view,
-  loggedIn: false,
+  loggedIn: o.loggedIn === true,
   editMode: "edit",
   editIdx: null,
   draft: null
@@ -528,9 +528,33 @@ function render() {
   }
 
   navL.innerHTML = "";
-  navR.innerHTML =
-    '<span id="saveStatus" class="save-status">✓ Saved</span>';
+  navR.innerHTML = `
+  <div style="
+    display:flex;
+    align-items:center;
+    gap:10px">
 
+    <span
+      id="saveStatus"
+      class="save-status">
+      ✓ Saved
+    </span>
+
+    <button
+      class="icon"
+      data-act="power"
+      aria-label="${S.loggedIn ? "Logout" : "Login"}"
+      title="${S.loggedIn ? "Logout" : "Login"}"
+      style="
+        color:${S.loggedIn ? "var(--amber)" : "var(--mid)"};
+        font-size:20px;
+        border-color:${S.loggedIn ? "var(--amber)" : "var(--line)"};
+      ">
+      ⏻
+    </button>
+
+  </div>
+`;
   const editTitle =
     S.editMode === "next"
       ? "Next stop"
@@ -2572,6 +2596,49 @@ document.addEventListener("click", e => {
   if(!t) return;
 
   const a = t.dataset.act;
+  /* Power / Login / Logout */
+if(a === "power") {
+
+  /* Logged out → open Login screen */
+  if(!S.loggedIn) {
+
+    S.view = "login";
+
+    persist();
+    render();
+
+    return;
+  }
+
+
+  /* Do not allow logout during an active shift */
+  if(
+    S.shift &&
+    !S.shift.done
+  ) {
+
+    toast(
+      "Finish your current shift before logging out"
+    );
+
+    return;
+  }
+
+
+  const ok = confirm(
+    "Logout?\n\n" +
+    "You will need your PIN before starting another shift."
+  );
+
+  if(!ok) return;
+
+
+  persist();
+
+  go("home");
+
+  return;
+}
 
   /* Login */
 if(a === "login") {
@@ -2594,17 +2661,13 @@ if(a === "login") {
 
   S.loggedIn = true;
 
-  persist();
+persist();
 
-  if(S.shift && !S.shift.done) {
-    go("shift");
-  } else if(S.profile) {
-    go("home");
-  } else {
-    go("setup");
-  }
+go("home");
 
-  return;
+toast("Logged in");
+
+return;
 }
   
   /* Navigation */
@@ -2727,16 +2790,28 @@ if(a === "tempUnit") {
 
 
   /* Start shift from home */
-  if(a === "startShiftHome") {
+if(a === "startShiftHome") {
 
-    S.pendingStart = round15(Date.now());   // clock in on the FIRST tap
+  if(!S.loggedIn) {
 
-    S.view = "shiftStart";
-
-    renderStartShift();
+    toast(
+      "Login before starting a shift"
+    );
 
     return;
   }
+
+
+  S.pendingStart =
+    round15(Date.now());
+
+  S.view =
+    "shiftStart";
+
+  renderStartShift();
+
+  return;
+}
 
 
   /* Start shift */
@@ -5763,17 +5838,7 @@ async function makeWeekly(monArg) {
 /* =========================================================
    INITIAL RENDER
 ========================================================= */
-
-if(S.loggedIn) {
-
-  render();
-
-} else {
-
-  S.view = "login";
-  render();
-
-}
+render();
 
 </script>
 ```
