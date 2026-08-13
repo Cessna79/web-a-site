@@ -394,15 +394,23 @@ function loadState() {
         o.profile.tempUnit = "C";
       }
 
-      const loggedIn =
-  o.loggedIn === true;
+      const hasActiveShift =
+  shift &&
+  !shift.done;
+
+const loggedIn =
+  hasActiveShift
+    ? true
+    : o.loggedIn === true;
 
 const view =
   !o.profile
     ? "setup"
-    : !loggedIn
-      ? "login"
-      : (shift && !shift.done ? "shift" : "home");
+    : hasActiveShift
+      ? "shift"
+      : loggedIn
+        ? "home"
+        : "login";
 
       return {
   profile: o.profile || null,
