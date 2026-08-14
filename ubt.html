@@ -1860,6 +1860,8 @@
                         <span class="badge" style="background:var(--stop)">YARD</span>
                         ${esc(n.company) || "the yard"}
                       </div>
+                      ${n.city ? `<div class="muted">${esc(n.city)}</div>` : ""
+            }
                     </div>`
             : `
                     <div class="card mt" style="border-color:var(--blue)">
@@ -3614,6 +3616,13 @@
 
                 endCompany: company,
 
+                /*
+                       The yard the driver expects to end at. Defaults to the
+                       yard they started from, and follows them if they end
+                       somewhere else.
+                    */
+                endCity: city,
+
                 stops: [
 
                 {
@@ -3910,6 +3919,9 @@
             ) {
                 S.shift.endCompany =
                 S.draft.company;
+
+                S.shift.endCity =
+                S.draft.city;
             }
 
 
@@ -3989,6 +4001,9 @@
               */
             S.shift.endCompany =
             cur.company || "";
+
+            S.shift.endCity =
+            cur.city || "";
 
             /*
                 Make sure the driver remains at this
@@ -4377,8 +4392,17 @@
 
                 company:
                 S.shift.endCompany ||
-                S.profile.homeBase ||
+                S.profile?.homeBase ||
                 S.shift.startCompany ||
+                "",
+
+                /*
+                       The yard needs a city like every other stop — it prints
+                       in the CUSTOMER column of the run sheet.
+                    */
+                city:
+                S.shift.endCity ||
+                S.shift.startCity ||
                 "",
 
                 pinned: "end"
@@ -4417,6 +4441,9 @@
             if (n.pinned === "end") {
                 S.shift.endCompany =
                 n.company;
+
+                S.shift.endCity =
+                n.city;
             }
 
 
