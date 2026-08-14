@@ -1,0 +1,7 @@
+{
+  "name": "private-websites",
+  "private": true,
+  "dependencies": {
+    "@vercel/functions": "latest"
+  }
+}
